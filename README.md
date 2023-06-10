@@ -1,1 +1,0 @@
-# php-symfony-shopify-sdk

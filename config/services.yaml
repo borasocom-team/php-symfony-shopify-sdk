@@ -1,0 +1,6 @@
+services:
+    TurboLabIt\ShopifySdk\Service\ShopifyAdminConnector:
+
+    shopifysdk.admin_connector:
+      alias: TurboLabIt\ShopifySdk\Service\ShopifyAdminConnector
+      public: true
