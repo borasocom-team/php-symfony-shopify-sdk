@@ -1,5 +1,5 @@
 <?php
-namespace TurboLabIt\ShopifySdkExtension\DependencyInjection;
+namespace TurboLabIt\ShopifySdk\DependencyInjection;
 
 use Symfony\Component\HttpKernel\DependencyInjection\Extension;
 use Symfony\Component\Config\FileLocator;
