@@ -1,6 +1,18 @@
-services:
-    TurboLabIt\ShopifySdk\Service\ShopifyAdminConnector:
+parameters:
+  default_shopify_api_version: '2023-04'
+  default_results_per_page: 250
 
-    shopifysdk.admin_connector:
+services:
+  TurboLabIt\ShopifySdk\Service\ShopifyAdminConnector:
+      autowire: true
+      public: true
+      arguments:
+        $arrConfig:
+          shop_name: '%env(APP_SHOPIFY_SHOP_NAME)%'
+          access_token: '%env(APP_SHOPIFY_ACCESS_TOKEN)%'
+          api_version: '%env(default:default_shopify_api_version:APP_SHOPIFY_API_VERSION)%'
+          results_per_page: '%env(default:default_results_per_page:APP_SHOPIFY_API_RESULTS_PER_PAGE)%'
+
+  shopifysdk.admin_connector:
       alias: TurboLabIt\ShopifySdk\Service\ShopifyAdminConnector
       public: true

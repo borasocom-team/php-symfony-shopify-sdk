@@ -13,7 +13,7 @@ class ShopifyAdminConnector extends Connector
     { }
 
 
-    public function resolveBaseUrl(): string
+    public function resolveBaseUrl() : string
     {
         $arrData = [
             "##shop-name##"     => $this->arrConfig["shop_name"],
