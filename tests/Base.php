@@ -1,38 +1,18 @@
 <?php
 namespace TurboLabIt\ShopifySdk\tests;
 
-use PHPUnit\Framework\TestCase;
-use Symfony\Component\Config\Loader\LoaderInterface;
-use Symfony\Component\HttpKernel\Kernel;
-use TurboLabIt\ShopifySdk\ShopifySdkBundle;
+use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 
-abstract class Base extends TestCase
+abstract class Base extends KernelTestCase
 {
     protected string $serviceId = '';
 
     protected function getInstance()
     {
-        $kernel = new ShopifySdkTestingKernel("test", true);
-        $kernel->boot();
-        $container = $kernel->getContainer();
-
+        self::bootKernel();
+        $container = static::getContainer();
         $connector = $container->get($this->serviceId);
         return $connector;
-    }
-}
-
-
-class ShopifySdkTestingKernel extends Kernel
-{
-    public function registerBundles(): iterable
-    {
-        return [
-            new ShopifySdkBundle(),
-        ];
-    }
-
-    public function registerContainerConfiguration(LoaderInterface $loader)
-    {
     }
 }

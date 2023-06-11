@@ -1,7 +1,7 @@
 <?php
 namespace TurboLabIt\ShopifySdk\tests;
 
-use TurboLabIt\ShopifySdk\Service\ShopifyAdminConnector;
+use TurboLabIt\ShopifySdk\Connector\ShopifyAdminConnector;
 
 
 class ShopifyAdminConnectorTest extends Base
@@ -15,10 +15,12 @@ class ShopifyAdminConnectorTest extends Base
     }
 
 
-    public function testEndpoint()
+    public function testBasicData()
     {
-        $connector  = $this->getInstance();
-        $endpoint   = $connector->resolveBaseUrl();
-        $this->assertEquals('https://test-borasonet.myshopify.com/admin/api/2023-04/graphql.json', $endpoint);
+        $connector = $this->getInstance();
+
+        //
+        $this->assertEquals('https://test-borasonet.myshopify.com/admin/api/2023-04/graphql.json', $connector->resolveBaseUrl());
+        $this->assertEquals(15, $connector->defaultConfig()['timeout']);
     }
 }

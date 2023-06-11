@@ -19,15 +19,16 @@
   ],
   "require": {
     "php": "^8.2",
-    "sammyjo20/saloon": "^2.0"
+    "sammyjo20/saloon": "^2.0",
+    "symfony/twig-pack": "^1.0"
   },
   "require-dev": {
-    "symfony/framework-bundle": "^6.3",
     "symfony/yaml": "^6.3",
     "symfony/dotenv": "^6.3",
     "symfony/config": "^6.3",
     "symfony/dependency-injection": "^6.3",
-    "symfony/http-kernel": "^6.3"
+    "symfony/http-kernel": "^6.3",
+    "symfony/test-pack": "^1.1"
   },
   "config": {
     "allow-plugins": {
