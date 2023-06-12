@@ -2,7 +2,7 @@
 mutation {
     bulkOperationRunQuery(
         query:"""
-        {% include 'request/shopify/graphql/orders.graphql.twig' %}
+        {% include '@ShopifySdk/request/shopify/graphql/orders.graphql.twig' %}
         """
     ) {
         bulkOperation {
