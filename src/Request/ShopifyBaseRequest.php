@@ -92,7 +92,12 @@ abstract class ShopifyBaseRequest extends Request implements HasBodyContract
         } while(!$bulkOpIsDone);
 
         // When an operation is completed, a JSONL output file is available for download at the URL specified in the url field
-        $dataUrl = $oResponse->data->currentBulkOperation->url;
+        $dataUrl = $oResponse->data->currentBulkOperation->url ?? null;
+
+        // there are NO items
+        if( empty($dataUrl) ) {
+            return [];
+        }
 
         $txtJson =
             $this->getHttpClient()

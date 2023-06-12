@@ -44,4 +44,12 @@ class ShopifyOrderListRequestTest extends Base
             }
         }
     }
+
+
+    public function testNoNewOrders()
+    {
+        $rqOrders   = $this->getInstance();
+        $arrOrders  = $rqOrders->getRecent(0);
+        $this->assertEmpty($arrOrders);
+    }
 }
