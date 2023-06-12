@@ -1,17 +1,18 @@
 parameters:
   default_shopify_api_version: '2023-04'
-  default_results_per_page: 250
+  default_results_per_page: 2
+  shopify_arrconfig:
+        shop_name: '%env(APP_SHOPIFY_SHOP_NAME)%'
+        access_token: '%env(APP_SHOPIFY_ACCESS_TOKEN)%'
+        api_version: '%env(default:default_shopify_api_version:APP_SHOPIFY_API_VERSION)%'
+        results_per_page: '%env(default:default_results_per_page:APP_SHOPIFY_API_RESULTS_PER_PAGE)%'
 
 services:
   TurboLabIt\ShopifySdk\Connector\ShopifyAdminConnector:
     autowire: true
     public: true
     arguments:
-      $arrConfig:
-        shop_name: '%env(APP_SHOPIFY_SHOP_NAME)%'
-        access_token: '%env(APP_SHOPIFY_ACCESS_TOKEN)%'
-        api_version: '%env(default:default_shopify_api_version:APP_SHOPIFY_API_VERSION)%'
-        results_per_page: '%env(default:default_results_per_page:APP_SHOPIFY_API_RESULTS_PER_PAGE)%'
+      $arrConfig: '%shopify_arrconfig%'
 
   shopifysdk.admin_connector:
     alias: TurboLabIt\ShopifySdk\Connector\ShopifyAdminConnector
@@ -20,6 +21,8 @@ services:
   TurboLabIt\ShopifySdk\Request\ShopifyOrderListRequest:
     autowire: true
     public: true
+    arguments:
+      $arrConfig: '%shopify_arrconfig%'
 
   shopifysdk.order_list_request:
     alias: TurboLabIt\ShopifySdk\Request\ShopifyOrderListRequest

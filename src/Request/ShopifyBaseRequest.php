@@ -27,6 +27,8 @@ abstract class ShopifyBaseRequest extends Request implements HasBodyContract
             throw new ShopifyConfigurationException("$this->templateFile not set!");
         }
 
+        $arrData["shopify_config"] = $this->arrConfig;
+
         $template = $this->templateDir . $this->templateFile . ".graphql.twig";
         $graphQlQuery = $this->twig->render($template, $arrData);
 
@@ -62,14 +64,14 @@ abstract class ShopifyBaseRequest extends Request implements HasBodyContract
         }
 
         try {
-            $json = $response->json();
+            $arrResponse = $response->json();
         } catch (\JsonException $ex) {
             $errorMessages[] = "JSON decode error: ##" . $response->body() . "##";
         }
 
-        if( !empty($json) && is_array($json) && !empty($json["errors"]) ) {
+        if( !empty($arrResponse) && is_array($arrResponse) && !empty($arrResponse["errors"]) ) {
 
-            $arrErrorFromJson   = array_column($json["errors"], 'message') ?? null;
+            $arrErrorFromJson   = array_column($arrResponse["errors"], 'message') ?? null;
             $errorMessages      = array_merge($errorMessages, $arrErrorFromJson);
         }
 
@@ -79,6 +81,6 @@ abstract class ShopifyBaseRequest extends Request implements HasBodyContract
             throw new ShopifyResponseException($message, $httpStatusCode);
         }
 
-        return $json;
+        return $arrResponse;
     }
 }

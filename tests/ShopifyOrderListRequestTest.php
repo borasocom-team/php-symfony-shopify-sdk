@@ -26,9 +26,14 @@ class ShopifyOrderListRequestTest extends Base
 
     public function testGetNewOrders()
     {
-        $rqOrders = $this->getInstance();
+        $rqOrders   = $this->getInstance();
+        $arrOrders  = $rqOrders->getRecent(7305);
+        $this->assertNotEmpty($arrOrders);
 
-        $data = $rqOrders->getRecent();
+        foreach($arrOrders as $order) {
 
+            $this->assertStringContainsString('gid://shopify/Order/', $order["id"]);
+            $this->assertStringContainsString('@', $order["email"]);
+        }
     }
 }

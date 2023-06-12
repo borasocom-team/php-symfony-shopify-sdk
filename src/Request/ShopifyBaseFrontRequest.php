@@ -7,6 +7,6 @@ use TurboLabIt\ShopifySdk\Connector\ShopifyFrontConnector;
 
 abstract class ShopifyBaseFrontRequest extends BaseRequest
 {
-    public function __construct(protected Environment $twig, protected ShopifyFrontConnector $connector)
+    public function __construct(protected array $arrConfig, protected Environment $twig, protected ShopifyFrontConnector $connector)
     { }
 }

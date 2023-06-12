@@ -22,7 +22,14 @@ class ShopifyOrderListRequest extends ShopifyBaseAdminRequest
 
         $response = $this->connector->send($request);
 
-        $arrOrders = $this->buildFromResponse($response);
+        $arrResponse    = $this->buildFromResponse($response);
+        $arrOrders      = $arrResponse["data"]["orders"]["edges"] ?? null;
+
+        if( empty($arrOrders) ) {
+            return [];
+        }
+
+        $arrOrders      = array_column($arrOrders, 'node');
 
         return $arrOrders;
     }
