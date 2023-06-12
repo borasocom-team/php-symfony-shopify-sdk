@@ -1,6 +1,6 @@
 parameters:
   default_shopify_api_version: '2023-04'
-  default_results_per_page: 2
+  default_results_per_page: 250
   shopify_arrconfig:
         shop_name: '%env(APP_SHOPIFY_SHOP_NAME)%'
         access_token: '%env(APP_SHOPIFY_ACCESS_TOKEN)%'

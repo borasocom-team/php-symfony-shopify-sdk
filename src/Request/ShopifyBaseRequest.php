@@ -5,6 +5,8 @@ use Saloon\Http\Request;
 use Saloon\Traits\Body\HasBody;
 use Saloon\Enums\Method;
 use Saloon\Contracts\Body\HasBody as HasBodyContract;
+use Symfony\Component\HttpClient\HttpClient;
+use Symfony\Contracts\HttpClient\HttpClientInterface;
 use TurboLabIt\ShopifySdk\Exception\ShopifyConfigurationException;
 use Saloon\Http\Response;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
@@ -13,15 +15,19 @@ use TurboLabIt\ShopifySdk\Exception\ShopifyResponseException;
 
 abstract class ShopifyBaseRequest extends Request implements HasBodyContract
 {
+    const BULK_OP_STATUS_DONE   = 'COMPLETED';
+
     protected Method $method = Method::POST;
 
     protected string $templateDir   = 'request/shopify/graphql/';
     protected string $templateFile  = '';
 
+    protected HttpClientInterface $httpClient;
+
     use HasBody;
 
 
-    public function setQueryFromTemplateBuilt(array $arrData = []) : static
+    public function setQueryFromTemplate(array $arrData = [], ?string $overrideTemplateName = null) : static
     {
         if( empty($this->templateFile) ) {
             throw new ShopifyConfigurationException("$this->templateFile not set!");
@@ -29,7 +35,7 @@ abstract class ShopifyBaseRequest extends Request implements HasBodyContract
 
         $arrData["shopify_config"] = $this->arrConfig;
 
-        $template = $this->templateDir . $this->templateFile . ".graphql.twig";
+        $template = $this->templateDir . ($overrideTemplateName ?? $this->templateFile) . ".graphql.twig";
         $graphQlQuery = $this->twig->render($template, $arrData);
 
         return $this->setQuery($graphQlQuery);
@@ -49,10 +55,68 @@ abstract class ShopifyBaseRequest extends Request implements HasBodyContract
     }
 
 
-    public function buildFromResponse(Response $response)
+    public function buildFromResponse(Response $response) : array
     {
-        $errorMessages = [];
+        $errorMessages  = [];
+        $arrResponse    = $this->parseResponse($response, $errorMessages);
+        $this->throwOnErrors($errorMessages, $response);
 
+        return $arrResponse;
+    }
+
+
+    public function buildFromBulkResponse(Response $response) : array
+    {
+        $errorMessages  = [];
+        $this->parseResponse($response, $errorMessages);
+        $this->throwOnErrors($errorMessages, $response);
+
+        // While the operation is running, you need to poll to see its progress
+        do {
+            $response =
+                $this
+                    ->setQueryFromTemplate([], 'bulk-operation-status')
+                    ->connector->send($this);
+
+            $errorMessages  = [];
+            $arrResponse    = $this->parseResponse($response, $errorMessages);
+            $this->throwOnErrors($errorMessages, $response);
+
+            $bulkOpStatus   = $arrResponse["data"]["currentBulkOperation"]["status"] ?? null;
+
+            $bulkOpIsDone   = strtolower($bulkOpStatus) == strtolower(static::BULK_OP_STATUS_DONE);
+
+            if( !$bulkOpIsDone ) {
+                sleep(2);
+            }
+
+        } while(!$bulkOpIsDone);
+
+        // When an operation is completed, a JSONL output file is available for download at the URL specified in the url field
+        $dataUrl = $arrResponse["data"]["currentBulkOperation"]["url"];
+
+        $txtJson =
+            $this->getHttpClient()
+                ->request('GET', $dataUrl)
+                ->getContent();
+
+        if( empty($txtJson) ) {
+            return [];
+        }
+
+        $arrLines = explode(PHP_EOL, trim($txtJson));
+
+        $arrData = [];
+        foreach($arrLines as $oneJsonLine) {
+            $arrData[] = json_decode($oneJsonLine, false, 255, JSON_THROW_ON_ERROR);
+        }
+
+        return $arrData;
+    }
+
+
+    protected function parseResponse(Response $response, array &$arrErrorMessages) : array
+    {
         $httpStatusCode = $response->status() ?? null;
 
         if(
@@ -60,27 +124,52 @@ abstract class ShopifyBaseRequest extends Request implements HasBodyContract
             $httpStatusCode < SymfonyResponse::HTTP_OK ||
             $httpStatusCode >= SymfonyResponse::HTTP_MULTIPLE_CHOICES
         ) {
-            $errorMessages[] = "HTTP response error: ##$httpStatusCode##";
+            $arrErrorMessages[] = "HTTP response error: ##$httpStatusCode##";
         }
 
         try {
             $arrResponse = $response->json();
+
         } catch (\JsonException $ex) {
-            $errorMessages[] = "JSON decode error: ##" . $response->body() . "##";
+
+            $arrResponse = [];
+            $arrErrorMessages[] = "JSON decode error (##" . $ex->getMessage() . "##): ##" . $response->body() . "##";
         }
 
-        if( !empty($arrResponse) && is_array($arrResponse) && !empty($arrResponse["errors"]) ) {
+        if( !empty($arrResponse["errors"]) ) {
 
             $arrErrorFromJson   = array_column($arrResponse["errors"], 'message') ?? null;
-            $errorMessages      = array_merge($errorMessages, $arrErrorFromJson);
+            $arrErrorMessages   = array_merge($arrErrorMessages, $arrErrorFromJson);
         }
 
-        if( !empty($errorMessages) ) {
+        if( !empty($arrResponse["data"]["bulkOperationRunQuery"]["userErrors"]) ) {
 
-            $message = implode(PHP_EOL, $errorMessages);
-            throw new ShopifyResponseException($message, $httpStatusCode);
+            $arrErrorFromJson   = array_column($arrResponse["data"]["bulkOperationRunQuery"]["userErrors"], 'message') ?? null;
+            $arrErrorMessages   = array_merge($arrErrorMessages, $arrErrorFromJson);
         }
 
         return $arrResponse;
+    }
+
+
+    protected function throwOnErrors(array $errorMessages, Response $response) : void
+    {
+        if( !empty($errorMessages) ) {
+
+            $httpStatusCode = $response->status() ?? 0;
+            $message        = implode(PHP_EOL, $errorMessages);
+            throw new ShopifyResponseException($message, $httpStatusCode);
+        }
+    }
+
+
+    protected function getHttpClient() : HttpClientInterface
+    {
+        if( !empty($this->httpClient) ) {
+            return $this->httpClient;
+        }
+
+        $this->httpClient = HttpClient::create();
+        return $this->httpClient;
     }
 }

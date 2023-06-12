@@ -32,8 +32,16 @@ class ShopifyOrderListRequestTest extends Base
 
         foreach($arrOrders as $order) {
 
-            $this->assertStringContainsString('gid://shopify/Order/', $order["id"]);
-            $this->assertStringContainsString('@', $order["email"]);
+            $this->assertStringContainsString('gid://shopify/Order/', $order["Order"]->id);
+            $this->assertStringContainsString('@', $order["Order"]->email);
+
+            $this->assertNotEmpty($order["Products"]);
+
+            foreach($order["Products"] as $product) {
+
+                $this->assertNotEmpty($product->quantity);
+                $this->assertEquals($order["Order"]->id, $product->__parentId);
+            }
         }
     }
 }

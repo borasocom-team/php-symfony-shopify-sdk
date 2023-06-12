@@ -1,0 +1,14 @@
+{# https://shopify.dev/api/usage/bulk-operations/queries #}
+query {
+    currentBulkOperation {
+        id
+        status
+        errorCode
+        createdAt
+        completedAt
+        objectCount
+        fileSize
+        url
+        partialDataUrl
+    }
+}

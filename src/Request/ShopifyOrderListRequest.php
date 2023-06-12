@@ -14,22 +14,47 @@ class ShopifyOrderListRequest extends ShopifyBaseAdminRequest
                 ->modify('-' . $lastDays . ' days')
                 ->format('Y-m-d');
 
-        $request =
+        $response =
             $this
-                ->setQueryFromTemplateBuilt([
+                ->setQueryFromTemplate([
                     "selectOrderAfterDate"  => $date
-                ]);
+                ])
+                ->connector->send($this);
 
-        $response = $this->connector->send($request);
+        $arrJsons = $this->buildFromBulkResponse($response);
 
-        $arrResponse    = $this->buildFromResponse($response);
-        $arrOrders      = $arrResponse["data"]["orders"]["edges"] ?? null;
-
-        if( empty($arrOrders) ) {
+        if( empty($arrJsons) ) {
             return [];
         }
 
-        $arrOrders      = array_column($arrOrders, 'node');
+        $arrOrders = [];
+
+        // In the JSONL results, each order object is followed by each of products and its variant objects on a new line
+        foreach($arrJsons as $oneItem) {
+
+            // it's an ORDER
+            if( !empty($oneItem->id) && stripos($oneItem->id, '/shopify/Order/') !== false ) {
+
+                $orderId = str_ireplace('gid://shopify/Order/', '', $oneItem->id);
+                $arrOrders[$orderId]["Order"] = $oneItem;
+
+            // it's a PRODUCT
+            } elseif( !empty($oneItem->name) && !empty($oneItem->variant) && !empty($oneItem->quantity)) {
+
+                $orderId = str_ireplace('gid://shopify/Order/', '', $oneItem->__parentId);
+                $arrOrders[$orderId]["Products"][] = $oneItem;
+
+            // it's a localizationExtensions
+            } elseif( !empty($oneItem->key) && !empty($oneItem->purpose) && !empty($oneItem->value)) {
+
+                $orderId = str_ireplace('gid://shopify/Order/', '', $oneItem->__parentId);
+                $this->arrShopifyTaxOrderData[$orderId][$oneItem->key] = $oneItem->value;
+
+            } else {
+
+                throw new \Exception('Unhandled json in response');
+            }
+        }
 
         return $arrOrders;
     }

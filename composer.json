@@ -20,7 +20,8 @@
   "require": {
     "php": "^8.2",
     "sammyjo20/saloon": "^2.0",
-    "symfony/twig-pack": "^1.0"
+    "symfony/twig-pack": "^1.0",
+    "symfony/http-client": "^6.3"
   },
   "require-dev": {
     "symfony/yaml": "^6.3",
