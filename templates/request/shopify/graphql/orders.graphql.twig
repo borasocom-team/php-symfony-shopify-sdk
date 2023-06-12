@@ -1,0 +1,89 @@
+{# https://shopify.dev/api/admin/graphql/reference/orders/order #}
+{
+  orders(first: {{ shopify_config.results_per_page }}, reverse:true, query:"updated_at:>{{ selectOrderAfterDate }}") {
+    edges {
+      node {
+        id
+        email
+        originalTotalPriceSet {
+          shopMoney {
+            amount
+            currencyCode
+          }
+        }
+        createdAt
+        updatedAt
+        closedAt
+        cancelledAt
+        cancelReason
+        billingAddress {
+          firstName
+          lastName
+          company
+          address1
+          address2
+          city
+          zip
+          province
+          provinceCode
+          country
+          countryCodeV2
+          phone
+        }
+        shippingAddress {
+          firstName
+          lastName
+          company
+          address1
+          address2
+          city
+          zip
+          province
+          provinceCode
+          country
+          countryCodeV2
+          phone
+        }
+        customerAcceptsMarketing
+        lineItems(first:50) {
+          edges {
+            node {
+              name
+              variant {
+                barcode
+              }
+              discountedUnitPriceSet {
+                shopMoney {
+                  amount
+                  currencyCode
+                }
+              }
+              discountedTotalSet {
+                shopMoney {
+                  amount
+                  currencyCode
+                }
+              }
+              quantity
+              taxLines {
+                rate
+                ratePercentage
+                title
+              }
+            }
+          }
+        }
+        localizationExtensions(first:50, countryCodes:[IT]) {
+          edges {
+            node {
+              key
+              purpose
+              title
+              value
+            }
+          }
+        }
+      }
+    }
+  }
+}
