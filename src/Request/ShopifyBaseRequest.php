@@ -19,7 +19,7 @@ abstract class ShopifyBaseRequest extends Request implements HasBodyContract
 
     protected Method $method = Method::POST;
 
-    protected string $templateDir   = 'request/shopify/graphql/';
+    protected string $templateDir   = '@ShopifySdk/request/shopify/graphql/';
     protected string $templateFile  = '';
 
     protected HttpClientInterface $httpClient;
