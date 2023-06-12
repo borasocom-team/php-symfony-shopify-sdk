@@ -55,13 +55,13 @@ abstract class ShopifyBaseRequest extends Request implements HasBodyContract
     }
 
 
-    public function buildFromResponse(Response $response) : array
+    public function buildFromResponse(Response $response) : \stdClass
     {
         $errorMessages  = [];
-        $arrResponse    = $this->parseResponse($response, $errorMessages);
+        $oResponse      = $this->parseResponse($response, $errorMessages);
         $this->throwOnErrors($errorMessages, $response);
 
-        return $arrResponse;
+        return $oResponse;
     }
 
 
@@ -79,11 +79,10 @@ abstract class ShopifyBaseRequest extends Request implements HasBodyContract
                     ->connector->send($this);
 
             $errorMessages  = [];
-            $arrResponse    = $this->parseResponse($response, $errorMessages);
+            $oResponse      = $this->parseResponse($response, $errorMessages);
             $this->throwOnErrors($errorMessages, $response);
 
-            $bulkOpStatus   = $arrResponse["data"]["currentBulkOperation"]["status"] ?? null;
-
+            $bulkOpStatus   = $oResponse->data->currentBulkOperation->status ?? null;
             $bulkOpIsDone   = strtolower($bulkOpStatus) == strtolower(static::BULK_OP_STATUS_DONE);
 
             if( !$bulkOpIsDone ) {
@@ -93,7 +92,7 @@ abstract class ShopifyBaseRequest extends Request implements HasBodyContract
         } while(!$bulkOpIsDone);
 
         // When an operation is completed, a JSONL output file is available for download at the URL specified in the url field
-        $dataUrl = $arrResponse["data"]["currentBulkOperation"]["url"];
+        $dataUrl = $oResponse->data->currentBulkOperation->url;
 
         $txtJson =
             $this->getHttpClient()
@@ -115,7 +114,7 @@ abstract class ShopifyBaseRequest extends Request implements HasBodyContract
     }
 
 
-    protected function parseResponse(Response $response, array &$arrErrorMessages) : array
+    protected function parseResponse(Response $response, array &$arrErrorMessages) : \stdClass
     {
         $httpStatusCode = $response->status() ?? null;
 
@@ -128,27 +127,29 @@ abstract class ShopifyBaseRequest extends Request implements HasBodyContract
         }
 
         try {
-            $arrResponse = $response->json();
+            $oResponse = $response->object();
 
         } catch (\JsonException $ex) {
 
-            $arrResponse = [];
+            $oResponse = null;
             $arrErrorMessages[] = "JSON decode error (##" . $ex->getMessage() . "##): ##" . $response->body() . "##";
         }
 
-        if( !empty($arrResponse["errors"]) ) {
+        if( !empty($oResponse->errors) ) {
 
-            $arrErrorFromJson   = array_column($arrResponse["errors"], 'message') ?? null;
-            $arrErrorMessages   = array_merge($arrErrorMessages, $arrErrorFromJson);
+            foreach($oResponse->errors as $oneError) {
+                $arrErrorMessages[] = $oneError->message;
+            }
         }
 
-        if( !empty($arrResponse["data"]["bulkOperationRunQuery"]["userErrors"]) ) {
+        if( !empty($oResponse->data->bulkOperationRunQuery->userErrors) ) {
 
-            $arrErrorFromJson   = array_column($arrResponse["data"]["bulkOperationRunQuery"]["userErrors"], 'message') ?? null;
-            $arrErrorMessages   = array_merge($arrErrorMessages, $arrErrorFromJson);
+            foreach($oResponse->data->bulkOperationRunQuery->userErrors as $oneError) {
+                $arrErrorMessages[] = $oneError->message;
+            }
         }
 
-        return $arrResponse;
+        return $oResponse;
     }
 
 
