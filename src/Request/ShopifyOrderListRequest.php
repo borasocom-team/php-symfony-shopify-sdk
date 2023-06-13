@@ -39,20 +39,14 @@ class ShopifyOrderListRequest extends ShopifyBaseAdminRequest
                 $arrOrders[$orderId]["Order"] = $oneItem;
 
             // it's a PRODUCT
-            } elseif( !empty($oneItem->name) && !empty($oneItem->variant) && !empty($oneItem->quantity)) {
+            } elseif( !empty($oneItem->name) && !empty($oneItem->quantity)) {
 
                 $orderId = str_ireplace('gid://shopify/Order/', '', $oneItem->__parentId);
                 $arrOrders[$orderId]["Products"][] = $oneItem;
 
-            // it's a localizationExtensions
-            } elseif( !empty($oneItem->key) && !empty($oneItem->purpose) && !empty($oneItem->value)) {
-
-                $orderId = str_ireplace('gid://shopify/Order/', '', $oneItem->__parentId);
-                $this->arrShopifyTaxOrderData[$orderId][$oneItem->key] = $oneItem->value;
-
             } else {
 
-                throw new \Exception('Unhandled json in response');
+                throw new ShopifyResponseException('Unhandled case in order response');
             }
         }
 
