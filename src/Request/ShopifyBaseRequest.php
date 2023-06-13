@@ -16,6 +16,7 @@ use TurboLabIt\ShopifySdk\Exception\ShopifyResponseException;
 abstract class ShopifyBaseRequest extends Request implements HasBodyContract
 {
     const BULK_OP_STATUS_DONE   = 'COMPLETED';
+    const BULK_OP_STATUS_FAIL   = 'FAILED';
 
     protected Method $method = Method::POST;
 
@@ -83,7 +84,7 @@ abstract class ShopifyBaseRequest extends Request implements HasBodyContract
             $this->throwOnErrors($errorMessages, $response);
 
             $bulkOpStatus   = $oResponse->data->currentBulkOperation->status ?? null;
-            $bulkOpIsDone   = strtolower($bulkOpStatus) == strtolower(static::BULK_OP_STATUS_DONE);
+            $bulkOpIsDone   = strtoupper($bulkOpStatus) == static::BULK_OP_STATUS_DONE;
 
             if( !$bulkOpIsDone ) {
                 sleep(2);
@@ -152,6 +153,13 @@ abstract class ShopifyBaseRequest extends Request implements HasBodyContract
             foreach($oResponse->data->bulkOperationRunQuery->userErrors as $oneError) {
                 $arrErrorMessages[] = $oneError->message;
             }
+        }
+
+        $bulkStatus = $oResponse->data->currentBulkOperation->status ?? null;
+        if( !empty($bulkStatus) && strtoupper($bulkStatus) ==  static::BULK_OP_STATUS_FAIL ) {
+
+            $bulkErrorCode = $oResponse->data->currentBulkOperation->errorCode ?? null;
+            $arrErrorMessages[] = "Bulk operation failed: ##$bulkErrorCode##";
         }
 
         return $oResponse;
