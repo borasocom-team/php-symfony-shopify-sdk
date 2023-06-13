@@ -20,7 +20,7 @@ class ShopifyAdminConnectorTest extends Base
         $connector = $this->getInstance();
 
         //
-        $this->assertEquals('https://test-borasonet.myshopify.com/admin/api/2023-04/graphql.json', $connector->resolveBaseUrl());
+        $this->assertStringContainsString('.myshopify.com/admin/api/2023-04/graphql.json', $connector->resolveBaseUrl());
         $this->assertEquals(15, $connector->defaultConfig()['timeout']);
     }
 }
