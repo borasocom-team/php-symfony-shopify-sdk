@@ -5,6 +5,16 @@
       node {
         id
         email
+        note
+        phone
+        name
+        fulfillmentOrders(first:4) {
+          edges{
+            node {
+              id
+            }
+          }
+        }
         originalTotalPriceSet {
           shopMoney {
             amount
@@ -16,6 +26,7 @@
         closedAt
         cancelledAt
         cancelReason
+        unpaid
         billingAddress {
           firstName
           lastName
@@ -45,10 +56,13 @@
           phone
         }
         customerAcceptsMarketing
-        lineItems(first:50) {
+        lineItems(first:10) {
           edges {
             node {
               name
+              customAttributes {
+                value
+              }
               variant {
                 barcode
               }
@@ -64,22 +78,40 @@
                   currencyCode
                 }
               }
+              customAttributes {
+                key
+                value
+              }
+              id
+              sku
+              quantity
+              variant {
+                id
+                displayName
+                inventoryQuantity
+                barcode
+                price
+              }
+              product {
+                id
+                productType
+                productCategory{
+                  productTaxonomyNode {
+                    id
+                    fullName
+                    name
+                  }
+                }
+                status
+                totalInventory
+                tags
+              }
               quantity
               taxLines {
                 rate
                 ratePercentage
                 title
               }
-            }
-          }
-        }
-        localizationExtensions(first:50, countryCodes:[IT]) {
-          edges {
-            node {
-              key
-              purpose
-              title
-              value
             }
           }
         }
