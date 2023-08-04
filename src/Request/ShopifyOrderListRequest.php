@@ -44,6 +44,11 @@ class ShopifyOrderListRequest extends ShopifyBaseAdminRequest
                 $orderId = str_ireplace('gid://shopify/Order/', '', $oneItem->__parentId);
                 $arrOrders[$orderId]["Products"][] = $oneItem;
 
+            } elseif( empty($oneItem->name) && empty($oneItem->variant) && empty($oneItem->quantity) && stripos($oneItem->id, '/shopify/FulfillmentOrder/') !== false) {
+
+                $orderId = str_ireplace('gid://shopify/Order/', '', $oneItem->__parentId);
+                $arrOrders[$orderId]['Order']->fulfillment[] = str_ireplace('gid://shopify/FulfillmentOrder/', '', $oneItem->id);
+
             } else {
 
                 throw new ShopifyResponseException('Unhandled case in order response');
