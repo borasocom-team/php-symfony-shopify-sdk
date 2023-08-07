@@ -6,6 +6,8 @@ use Saloon\Http\Connector;
 
 abstract class ShopifyBaseConnector extends Connector
 {
+    const CHANNEL_SHOPIFY = 'shopify';
+    
     protected string $endpoint = '';
 
 
