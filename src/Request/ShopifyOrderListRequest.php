@@ -4,21 +4,34 @@ namespace TurboLabIt\ShopifySdk\Request;
 
 class ShopifyOrderListRequest extends ShopifyBaseAdminRequest
 {
+    const RECENT_DAYS_DEFAULT_NUM = 7;
+
     protected string $templateFile = 'orders-bulk';
 
 
-    public function getRecent(int $lastDays = 7) : array
+    public function getRecent(?int $lastDays = null) : array
     {
-        $date =
-            (new \DateTime())
-                ->modify('-' . $lastDays . ' days')
-                ->format('Y-m-d');
+        $lastDays = is_null($lastDays) ? static::RECENT_DAYS_DEFAULT_NUM : $lastDays;
+        if($lastDays > 0) {
+
+            $date =
+                (new \DateTime())
+                    ->modify('-' . $lastDays . ' days')
+                    ->format('Y-m-d');
+
+            $arrParams = [
+                "selectOrderAfterDate"  => $date
+            ];
+
+        } else {
+
+            $arrParams = [];
+        }
+
 
         $response =
             $this
-                ->setQueryFromTemplate([
-                    "selectOrderAfterDate"  => $date
-                ])
+                ->setQueryFromTemplate($arrParams)
                 ->connector->send($this);
 
         $arrJsons = $this->buildFromBulkResponse($response);

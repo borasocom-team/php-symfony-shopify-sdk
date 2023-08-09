@@ -1,6 +1,7 @@
 {# https://shopify.dev/api/admin/graphql/reference/orders/order #}
 {
-  orders(first: {{ shopify_config.results_per_page }}, reverse:true, query:"updated_at:>{{ selectOrderAfterDate }}") {
+  orders(first: {{ shopify_config.results_per_page }}, reverse:true,
+        query:"{% if selectOrderAfterDate is defined %}updated_at:>{{ selectOrderAfterDate }}{% endif %}") {
     edges {
       node {
         id
