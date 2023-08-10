@@ -62,6 +62,26 @@
           phone
         }
         customerAcceptsMarketing
+        shippingLine {
+          code
+          originalPriceSet {
+            shopMoney {
+              amount
+              currencyCode
+            }
+          }
+          discountedPriceSet {
+            shopMoney {
+              amount
+              currencyCode
+            }
+          }
+          taxLines{
+            rate
+            ratePercentage
+            title
+          }
+        }
         lineItems(first:10) {
           edges {
             node {
