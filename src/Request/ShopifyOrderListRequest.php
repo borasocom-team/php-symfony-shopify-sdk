@@ -1,6 +1,8 @@
 <?php
 namespace TurboLabIt\ShopifySdk\Request;
 
+use TurboLabIt\ShopifySdk\Exception\ShopifyResponseException;
+
 
 class ShopifyOrderListRequest extends ShopifyBaseAdminRequest
 {
@@ -57,10 +59,21 @@ class ShopifyOrderListRequest extends ShopifyBaseAdminRequest
                 $orderId = str_ireplace('gid://shopify/Order/', '', $oneItem->__parentId);
                 $arrOrders[$orderId]["Products"][] = $oneItem;
 
-            } elseif( empty($oneItem->name) && empty($oneItem->variant) && empty($oneItem->quantity) && stripos($oneItem->id, '/shopify/FulfillmentOrder/') !== false) {
+            // FULFILLMENT data
+            } elseif( !empty($oneItem->id) && stripos($oneItem->id, '/shopify/FulfillmentOrder/') !== false) {
 
                 $orderId = str_ireplace('gid://shopify/Order/', '', $oneItem->__parentId);
-                $arrOrders[$orderId]['Order']->fulfillment[] = str_ireplace('gid://shopify/FulfillmentOrder/', '', $oneItem->id);
+                $arrOrders[$orderId]['Order']->fulfillment[] = [
+                    'id'      => str_ireplace('gid://shopify/FulfillmentOrder/', '', $oneItem->id),
+                    'status'  => $oneItem->status,
+                    'location'=> $oneItem->assignedLocation->name
+                ];
+
+            } elseif( !empty($oneItem->key) ) {
+
+                $orderId = str_ireplace('gid://shopify/Order/', '', $oneItem->__parentId);
+                $key = $oneItem->key;
+                $arrOrders[$orderId]['Order']->$key[] = $oneItem;
 
             } else {
 
