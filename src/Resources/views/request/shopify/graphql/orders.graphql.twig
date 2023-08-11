@@ -1,4 +1,6 @@
 {# https://shopify.dev/api/admin/graphql/reference/orders/order #}
+
+{% block shopifyOrdersTemplate %}
 {
   orders(first: {{ shopify_config.results_per_page }}, reverse:true, query:"
     {%- block shopifyOrdersQuery -%}
@@ -167,3 +169,4 @@
     }
   }
 }
+{% endblock %}
