@@ -1,7 +1,11 @@
 {# https://shopify.dev/api/admin/graphql/reference/orders/order #}
 {
-  orders(first: {{ shopify_config.results_per_page }}, reverse:true,
-        query:"{% if selectOrderAfterDate is defined %}updated_at:>{{ selectOrderAfterDate }}{% endif %}") {
+  orders(first: {{ shopify_config.results_per_page }}, reverse:true, query:"
+    {%- block shopifyOrdersQuery -%}
+        {%- if shopifyOrdersQuery is defined -%}
+            {{- shopifyOrdersQuery|raw -}}
+        {%- endif -%}
+    {%- endblock -%}") {
     edges {
       node {
         id
@@ -26,7 +30,6 @@
             currencyCode
           }
         }
-        paymentGatewayNames
         createdAt
         updatedAt
         closedAt
@@ -62,32 +65,6 @@
           phone
         }
         customerAcceptsMarketing
-        shippingLine {
-          code
-          originalPriceSet {
-            shopMoney {
-              amount
-              currencyCode
-            }
-          }
-          discountedPriceSet {
-            shopMoney {
-              amount
-              currencyCode
-            }
-          }
-          taxLines{
-            rate
-            ratePercentage
-            title
-          }
-        }
-        totalDiscountsSet {
-          shopMoney {
-            amount
-            currencyCode
-          }
-        }
         lineItems(first:10) {
           edges {
             node {
