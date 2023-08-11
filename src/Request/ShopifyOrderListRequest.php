@@ -21,19 +21,12 @@ class ShopifyOrderListRequest extends ShopifyBaseAdminRequest
                     ->modify('-' . $lastDays . ' days')
                     ->format('Y-m-d');
 
-            $arrParams = [
-                "selectOrderAfterDate"  => $date
-            ];
-
-        } else {
-
-            $arrParams = [];
+            $arrParams = ["shopifyOrdersQuery" => "updated_at:>$date"];
         }
-
 
         $response =
             $this
-                ->setQueryFromTemplate($arrParams)
+                ->setQueryFromTemplate($arrParams ?? [])
                 ->connector->send($this);
 
         $arrJsons = $this->buildFromBulkResponse($response);
