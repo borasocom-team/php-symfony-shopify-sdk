@@ -46,11 +46,11 @@ class ShopifyOrderListRequest extends ShopifyBaseAdminRequest
                 $orderId = str_ireplace('gid://shopify/Order/', '', $oneItem->id);
                 $arrOrders[$orderId]["Order"] = $oneItem;
 
-            // it's a PRODUCT
+            // it's an ORDER_ITEM
             } elseif( !empty($oneItem->name) && !empty($oneItem->quantity)) {
 
                 $orderId = str_ireplace('gid://shopify/Order/', '', $oneItem->__parentId);
-                $arrOrders[$orderId]["Products"][] = $oneItem;
+                $arrOrders[$orderId]['Order']->Items[] = $oneItem;
 
             // FULFILLMENT data
             } elseif( !empty($oneItem->id) && stripos($oneItem->id, '/shopify/FulfillmentOrder/') !== false) {
