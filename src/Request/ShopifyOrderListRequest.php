@@ -44,7 +44,7 @@ class ShopifyOrderListRequest extends ShopifyBaseAdminRequest
             if( !empty($oneItem->id) && stripos($oneItem->id, '/shopify/Order/') !== false ) {
 
                 $orderId = str_ireplace('gid://shopify/Order/', '', $oneItem->id);
-                $arrOrders[$orderId]["Order"] = $oneItem;
+                $arrOrders[$orderId] = $oneItem;
 
             // it's an ORDER_ITEM
             } elseif( !empty($oneItem->name) && !empty($oneItem->quantity)) {
