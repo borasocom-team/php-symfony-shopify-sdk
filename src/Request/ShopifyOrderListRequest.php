@@ -50,13 +50,13 @@ class ShopifyOrderListRequest extends ShopifyBaseAdminRequest
             } elseif( !empty($oneItem->name) && !empty($oneItem->quantity)) {
 
                 $orderId = str_ireplace('gid://shopify/Order/', '', $oneItem->__parentId);
-                $arrOrders[$orderId]['Order']->Items[] = $oneItem;
+                $arrOrders[$orderId]->Items[] = $oneItem;
 
             // FULFILLMENT data
             } elseif( !empty($oneItem->id) && stripos($oneItem->id, '/shopify/FulfillmentOrder/') !== false) {
 
                 $orderId = str_ireplace('gid://shopify/Order/', '', $oneItem->__parentId);
-                $arrOrders[$orderId]['Order']->fulfillment[] = [
+                $arrOrders[$orderId]->fulfillment[] = [
                     'id'      => str_ireplace('gid://shopify/FulfillmentOrder/', '', $oneItem->id),
                     'status'  => $oneItem->status,
                     'location'=> $oneItem->assignedLocation->name
@@ -66,7 +66,7 @@ class ShopifyOrderListRequest extends ShopifyBaseAdminRequest
 
                 $orderId = str_ireplace('gid://shopify/Order/', '', $oneItem->__parentId);
                 $key = $oneItem->key;
-                $arrOrders[$orderId]['Order']->$key[] = $oneItem;
+                $arrOrders[$orderId]->$key[] = $oneItem;
 
             } else {
 
