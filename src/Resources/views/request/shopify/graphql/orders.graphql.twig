@@ -155,6 +155,18 @@
             }
           }
         }
+        refunds {
+          id
+          createdAt
+          updatedAt
+          totalRefundedSet {
+            shopMoney {
+              amount
+              currencyCode
+            }
+          }
+          note
+        }
         localizationExtensions(first:50, countryCodes:[IT]) {
           edges {
             node {
