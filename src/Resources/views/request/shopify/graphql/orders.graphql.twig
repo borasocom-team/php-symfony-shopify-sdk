@@ -149,9 +149,14 @@
               }
               quantity
               taxLines {
-                rate
-                ratePercentage
                 title
+                ratePercentage
+                priceSet {
+								  shopMoney {
+              		  amount
+              		  currencyCode
+                  }
+                }
               }
             }
           }
