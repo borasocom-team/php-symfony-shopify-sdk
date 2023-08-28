@@ -83,10 +83,15 @@
               currencyCode
             }
           }
-          taxLines{
-            rate
-            ratePercentage
+          taxLines {
             title
+            ratePercentage
+            priceSet {
+              shopMoney {
+                amount
+                currencyCode
+              }
+            }
           }
         }
         totalDiscountsSet {
@@ -152,9 +157,9 @@
                 title
                 ratePercentage
                 priceSet {
-								  shopMoney {
-              		  amount
-              		  currencyCode
+		  shopMoney {
+                    amount
+                    currencyCode
                   }
                 }
               }
