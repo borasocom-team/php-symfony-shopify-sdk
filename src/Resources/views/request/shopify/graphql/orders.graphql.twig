@@ -100,6 +100,26 @@
             currencyCode
           }
         }
+	customerJourneySummary {
+          firstVisit {
+            utmParameters {
+              content
+              medium
+              source
+              campaign
+              term
+            }
+          }
+          lastVisit {
+            utmParameters {
+              content
+              medium
+              source
+              campaign
+              term
+            }
+          }
+        }
         lineItems(first:10) {
           edges {
             node {
