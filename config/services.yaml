@@ -27,3 +27,11 @@ services:
   shopifysdk.order_list_request:
     alias: TurboLabIt\ShopifySdk\Request\ShopifyOrderListRequest
     public: true
+
+  TurboLabIt\ShopifySdk\DataAdapter\OrderDataAdapter:
+      autowire: true
+      public: true
+
+  shopifysdk.order_data_adapter:
+      alias: TurboLabIt\ShopifySdk\DataAdapter\OrderDataAdapter
+      public: true
