@@ -123,6 +123,7 @@
         lineItems(first:10) {
           edges {
             node {
+	      {% block shopifyLineItemsExtra %}{% endblock %}
               name
               customAttributes {
                 value
