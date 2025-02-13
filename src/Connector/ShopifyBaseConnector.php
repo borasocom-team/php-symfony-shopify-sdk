@@ -39,6 +39,7 @@ abstract class ShopifyBaseConnector extends Connector
     {
         return [
             'Content-Type'              => 'application/graphql',
+            'Accept'                    => 'application/graphql-response+json, application/json',
             'X-Shopify-Access-Token'    => $this->arrConfig["access_token"]
         ];
     }
