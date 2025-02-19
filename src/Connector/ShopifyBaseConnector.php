@@ -38,9 +38,14 @@ abstract class ShopifyBaseConnector extends Connector
     protected function defaultHeaders(): array
     {
         return [
-            'Content-Type'              => 'application/graphql',
+            'Content-Type'              => 'application/json',
             'Accept'                    => 'application/graphql-response+json, application/json',
             'X-Shopify-Access-Token'    => $this->arrConfig["access_token"]
         ];
+    }
+
+    public function setHeader($key, $value) {
+        $connectorHeaders = $this->headers();
+        $connectorHeaders->add($key, $value);
     }
 }

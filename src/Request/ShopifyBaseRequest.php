@@ -45,7 +45,11 @@ abstract class ShopifyBaseRequest extends Request implements HasBodyContract
 
     public function setQuery(string $graphQl) : static
     {
-        $this->body()->set($graphQl);
+        $this->body()->set(
+            json_encode(
+                ['query' => $graphQl]
+            )
+        );
         return $this;
     }
 
