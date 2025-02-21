@@ -28,7 +28,7 @@ abstract class ShopifyBaseRequest extends Request implements HasBodyContract
     use HasBody;
 
 
-    public function setQueryFromTemplate(array $arrData = [], ?string $overrideTemplateName = null) : static
+    public function setQueryFromTemplate(array $arrData = [], ?string $overrideTemplateName = null, bool $queryIsJson = false) : static
     {
         if( empty($this->templateFile) ) {
             throw new ShopifyConfigurationException("$this->templateFile not set!");
@@ -39,17 +39,18 @@ abstract class ShopifyBaseRequest extends Request implements HasBodyContract
         $template = $this->templateDir . ($overrideTemplateName ?? $this->templateFile) . ".graphql.twig";
         $graphQlQuery = $this->twig->render($template, $arrData);
 
-        return $this->setQuery($graphQlQuery);
+        return $this->setQuery($graphQlQuery, $queryIsJson);
     }
 
 
-    public function setQuery(string $graphQl) : static
+    public function setQuery(string $graphQl, bool $queryIsJson = false) : static
     {
-        $this->body()->set(
-            json_encode(
+        if($queryIsJson) {
+            $graphQl = json_encode(
                 ['query' => $graphQl]
-            )
-        );
+            );
+        }
+        $this->body()->set($graphQl);
         return $this;
     }
 
