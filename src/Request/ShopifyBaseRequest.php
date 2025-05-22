@@ -71,7 +71,7 @@ abstract class ShopifyBaseRequest extends Request implements HasBodyContract
     }
 
 
-    public function buildFromBulkResponse(Response $response) : array
+    public function buildFromBulkResponse(Response $response,  bool $queryIsJson = false) : array
     {
         $errorMessages  = [];
         $this->parseResponse($response, $errorMessages);
@@ -81,7 +81,7 @@ abstract class ShopifyBaseRequest extends Request implements HasBodyContract
         do {
             $response =
                 $this
-                    ->setQueryFromTemplate([], 'bulk-operation-status')
+                    ->setQueryFromTemplate([], 'bulk-operation-status', $queryIsJson)
                     ->connector->send($this);
 
             $errorMessages  = [];
