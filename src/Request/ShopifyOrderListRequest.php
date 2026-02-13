@@ -26,10 +26,10 @@ class ShopifyOrderListRequest extends ShopifyBaseAdminRequest
 
         $response =
             $this
-                ->setQueryFromTemplate($arrParams ?? [])
+                ->setQueryFromTemplate($arrParams ?? [], null, true)
                 ->connector->send($this);
 
-        $arrJsons = $this->buildFromBulkResponse($response);
+        $arrJsons = $this->buildFromBulkResponse($response,true);
 
         if( empty($arrJsons) ) {
             return [];
