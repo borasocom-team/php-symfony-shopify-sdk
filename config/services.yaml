@@ -35,3 +35,33 @@ services:
   shopifysdk.order_data_adapter:
       alias: TurboLabIt\ShopifySdk\DataAdapter\OrderDataAdapter
       public: true
+
+  TurboLabIt\ShopifySdk\Request\ShopifySmartCollectionListRequest:
+    autowire: true
+    public: true
+    arguments:
+      $arrConfig: '%shopify_arrconfig%'
+
+  shopifysdk.smart_collection_list_request:
+    alias: TurboLabIt\ShopifySdk\Request\ShopifySmartCollectionListRequest
+    public: true
+
+  TurboLabIt\ShopifySdk\Request\ShopifyMetafieldDefinitionCreateRequest:
+    autowire: true
+    public: true
+    arguments:
+      $arrConfig: '%shopify_arrconfig%'
+
+  shopifysdk.metafield_definition_create_request:
+    alias: TurboLabIt\ShopifySdk\Request\ShopifyMetafieldDefinitionCreateRequest
+    public: true
+
+  TurboLabIt\ShopifySdk\Request\ShopifySmartCollectionCreateRequest:
+    autowire: true
+    public: true
+    arguments:
+      $arrConfig: '%shopify_arrconfig%'
+
+  shopifysdk.smart_collection_create_request:
+    alias: TurboLabIt\ShopifySdk\Request\ShopifySmartCollectionCreateRequest
+    public: true

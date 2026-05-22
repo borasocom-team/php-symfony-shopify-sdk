@@ -14,6 +14,12 @@ class ShopifyOrderListRequest extends ShopifyBaseAdminRequest
     public function getRecent(?int $lastDays = null) : array
     {
         $lastDays = is_null($lastDays) ? static::RECENT_DAYS_DEFAULT_NUM : $lastDays;
+
+        $cacheKey = $this->buildCacheKey('getRecent', $lastDays);
+        if( array_key_exists($cacheKey, $this->arrCachedData) ) {
+            return $this->arrCachedData[$cacheKey];
+        }
+
         if($lastDays > 0) {
 
             $date =
@@ -32,7 +38,7 @@ class ShopifyOrderListRequest extends ShopifyBaseAdminRequest
         $arrJsons = $this->buildFromBulkResponse($response,true);
 
         if( empty($arrJsons) ) {
-            return [];
+            return $this->arrCachedData[$cacheKey] = [];
         }
 
         $arrOrders = [];
@@ -74,6 +80,6 @@ class ShopifyOrderListRequest extends ShopifyBaseAdminRequest
             }
         }
 
-        return $arrOrders;
+        return $this->arrCachedData[$cacheKey] = $arrOrders;
     }
 }

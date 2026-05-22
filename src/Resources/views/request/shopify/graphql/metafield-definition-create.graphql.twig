@@ -1,0 +1,35 @@
+{# https://shopify.dev/docs/api/admin-graphql/latest/mutations/metafieldDefinitionCreate #}
+mutation {
+  metafieldDefinitionCreate(definition: {
+    namespace:  "{{ namespace }}",
+    key:        "{{ key }}",
+    name:       "{{ name }}",
+    type:       "{{ type }}",
+    ownerType:  {{ ownerType }},
+    pin:        {{ (pin is defined and pin) ? 'true' : 'false' }}{% if validations is defined and validations|length > 0 %},
+    validations: [
+      {%- for v in validations %}
+      { name: "{{ v.name }}", value: "{{ v.value }}" }{% if not loop.last %},{% endif %}
+      {%- endfor %}
+    ]{% endif %}{% if uniqueValues is defined and uniqueValues %},
+    capabilities: {
+      uniqueValues: { enabled: true }
+    }{% endif %}
+  }) {
+    createdDefinition {
+      id
+      namespace
+      key
+      name
+      type {
+        name
+      }
+      ownerType
+    }
+    userErrors {
+      field
+      message
+      code
+    }
+  }
+}

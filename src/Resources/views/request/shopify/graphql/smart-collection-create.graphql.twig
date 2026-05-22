@@ -1,0 +1,41 @@
+{# https://shopify.dev/docs/api/admin-graphql/latest/mutations/collectionCreate #}
+mutation {
+  collectionCreate(input: {
+    title:  "{{ title }}",
+    handle: "{{ handle }}"
+    {%- if ruleSet is defined and ruleSet -%}
+    ,
+    ruleSet: {
+      appliedDisjunctively: {{ ruleSet.appliedDisjunctively|default(false) ? 'true' : 'false' }},
+      rules: [
+        {%- for r in ruleSet.rules %}
+        { column: {{ r.column }}, relation: {{ r.relation }}, condition: "{{ r.condition }}" }{% if not loop.last %},{% endif %}
+        {%- endfor %}
+      ]
+    }
+    {%- endif -%}
+    {%- if metafields is defined and metafields|length > 0 -%}
+    ,
+    metafields: [
+      {%- for m in metafields %}
+      { namespace: "{{ m.namespace }}", key: "{{ m.key }}", type: "{{ m.type }}", value: "{{ m.value }}" }{% if not loop.last %},{% endif %}
+      {%- endfor %}
+    ]
+    {%- endif %}
+  }) {
+    collection {
+      id
+      title
+      handle
+      ruleSet {
+        appliedDisjunctively
+        rules { column relation condition }
+      }
+    }
+    userErrors {
+      field
+      message
+      code
+    }
+  }
+}

@@ -1,0 +1,46 @@
+{# https://shopify.dev/docs/api/admin-graphql/latest/queries/collections #}
+
+{% block shopifySmartCollectionsTemplate %}
+{
+  collections(first: {{ shopify_config.results_per_page }}{% if afterCursor is defined and afterCursor %}, after: "{{ afterCursor }}"{% endif %}, query: "
+    {%- block shopifySmartCollectionsQuery -%}
+        {%- if shopifyQuery is defined -%}
+            {{- shopifyQuery|raw -}}
+        {%- endif -%}
+    {%- endblock -%}") {
+    edges {
+      node {
+        id
+        title
+        handle
+        updatedAt
+        ruleSet {
+          appliedDisjunctively
+          rules {
+            column
+            relation
+            condition
+          }
+        }
+        resourcePublications(first: 50) {
+          edges {
+            node {
+              publication {
+                id
+                name
+              }
+              isPublished
+              publishDate
+            }
+          }
+        }
+        {% block shopifySmartCollectionField %}{% endblock %}
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}
+{% endblock %}

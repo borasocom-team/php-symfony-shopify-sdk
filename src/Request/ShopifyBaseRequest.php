@@ -25,7 +25,20 @@ abstract class ShopifyBaseRequest extends Request implements HasBodyContract
 
     protected HttpClientInterface $httpClient;
 
+    protected array $arrCachedData = [];
+
+
     use HasBody;
+
+
+    protected function buildCacheKey(string $methodName, mixed $input = null) : string
+    {
+        if( is_array($input) ) {
+            ksort($input);
+        }
+
+        return $methodName . '.' . hash('xxh3', serialize($input));
+    }
 
 
     public function setQueryFromTemplate(array $arrData = [], ?string $overrideTemplateName = null, bool $queryIsJson = false) : static
@@ -148,8 +161,15 @@ abstract class ShopifyBaseRequest extends Request implements HasBodyContract
 
         if( !empty($oResponse->errors) ) {
 
-            foreach($oResponse->errors as $oneError) {
-                $arrErrorMessages[] = $oneError->message;
+            if( is_string($oResponse->errors) ) {
+
+                $arrErrorMessages[] = $oResponse->errors;
+
+            } else {
+
+                foreach($oResponse->errors as $oneError) {
+                    $arrErrorMessages[] = $oneError->message ?? json_encode($oneError);
+                }
             }
         }
 
