@@ -68,10 +68,7 @@ abstract class ShopifyBaseRequest extends Request implements HasBodyContract
     }
 
 
-    public function resolveEndpoint(): string
-    {
-        return '';
-    }
+    public function resolveEndpoint(): string { return ''; }
 
 
     public function buildFromResponse(Response $response) : \stdClass
@@ -210,5 +207,12 @@ abstract class ShopifyBaseRequest extends Request implements HasBodyContract
 
         $this->httpClient = HttpClient::create();
         return $this->httpClient;
+    }
+
+
+    public function clearCache() : static
+    {
+        $this->arrCachedData = [];
+        return $this;
     }
 }
