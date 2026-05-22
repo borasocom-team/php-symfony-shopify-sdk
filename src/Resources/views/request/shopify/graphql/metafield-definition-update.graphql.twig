@@ -1,0 +1,30 @@
+{# https://shopify.dev/docs/api/admin-graphql/latest/mutations/metafieldDefinitionUpdate #}
+mutation {
+  metafieldDefinitionUpdate(definition: {
+    namespace:  "{{ namespace }}",
+    key:        "{{ key }}",
+    ownerType:  {{ ownerType }},
+    name:       "{{ name }}",
+    pin:        {{ (pin is defined and pin) ? 'true' : 'false' }}
+    {%- if validations is defined and validations|length > 0 %},
+    validations: [
+      {%- for v in validations %}
+      { name: "{{ v.name }}", value: "{{ v.value }}" }{% if not loop.last %},{% endif %}
+      {%- endfor %}
+    ]
+    {%- endif %}
+  }) {
+    updatedDefinition {
+      id
+      namespace
+      key
+      name
+      pinnedPosition
+    }
+    userErrors {
+      field
+      message
+      code
+    }
+  }
+}

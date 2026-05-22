@@ -1,0 +1,11 @@
+{# https://shopify.dev/docs/api/admin-graphql/latest/queries/publications #}
+{
+  publications(first: 250) {
+    edges {
+      node {
+        id
+        name
+      }
+    }
+  }
+}

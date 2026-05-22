@@ -1,0 +1,20 @@
+{# https://shopify.dev/docs/api/admin-graphql/latest/mutations/publishableUnpublish #}
+mutation {
+  publishableUnpublish(
+    id: "{{ resourceGid }}",
+    input: [
+      {%- for pubId in publicationIds %}
+      { publicationId: "{{ pubId }}" }{% if not loop.last %},{% endif %}
+      {%- endfor %}
+    ]
+  ) {
+    publishable {
+      availablePublicationsCount { count }
+      resourcePublicationsCount { count }
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}

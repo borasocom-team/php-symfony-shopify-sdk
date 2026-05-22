@@ -1,8 +1,8 @@
-{# https://shopify.dev/docs/api/admin-graphql/latest/mutations/collectionCreate #}
+{# https://shopify.dev/docs/api/admin-graphql/latest/mutations/collectionUpdate #}
 mutation {
-  collectionCreate(input: {
-    title:  "{{ title }}",
-    handle: "{{ handle }}"
+  collectionUpdate(input: {
+    id:     "{{ id }}",
+    title:  "{{ title }}"
     {%- if ruleSet is defined and ruleSet -%}
     ,
     ruleSet: {
@@ -13,14 +13,6 @@ mutation {
         {%- endfor %}
       ]
     }
-    {%- endif -%}
-    {%- if metafields is defined and metafields|length > 0 -%}
-    ,
-    metafields: [
-      {%- for m in metafields %}
-      { namespace: "{{ m.namespace }}", key: "{{ m.key }}", type: "{{ m.type }}", value: "{{ m.value }}" }{% if not loop.last %},{% endif %}
-      {%- endfor %}
-    ]
     {%- endif %}
   }) {
     collection {

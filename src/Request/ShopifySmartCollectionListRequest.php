@@ -13,6 +13,14 @@ class ShopifySmartCollectionListRequest extends ShopifyBaseAdminRequest
     protected string $templateFile = 'smart-collections';
 
 
+    public function listVisible(array $arrFilters = []) : array
+    {
+        // hard-lock `published_status:published` so callers cannot subvert the "visible" guarantee:
+        // PHP `+` keeps the LEFT side on key collision.
+        return $this->list(['published_status' => 'published'] + $arrFilters);
+    }
+
+
     public function list(array $arrFilters = []) : array
     {
         $arrFilters     = $arrFilters + static::DEFAULT_FILTERS;

@@ -64,6 +64,16 @@ services:
     alias: TurboLabIt\ShopifySdk\Request\ShopifyMetafieldDefinitionCreateRequest
     public: true
 
+  TurboLabIt\ShopifySdk\Request\ShopifyMetafieldDefinitionUpdateRequest:
+    autowire: true
+    public: true
+    arguments:
+      $arrConfig: '%shopify_arrconfig%'
+
+  shopifysdk.metafield_definition_update_request:
+    alias: TurboLabIt\ShopifySdk\Request\ShopifyMetafieldDefinitionUpdateRequest
+    public: true
+
   TurboLabIt\ShopifySdk\Request\ShopifySmartCollectionCreateRequest:
     autowire: true
     public: true
@@ -72,4 +82,34 @@ services:
 
   shopifysdk.smart_collection_create_request:
     alias: TurboLabIt\ShopifySdk\Request\ShopifySmartCollectionCreateRequest
+    public: true
+
+  TurboLabIt\ShopifySdk\Request\ShopifySmartCollectionUpdateRequest:
+    autowire: true
+    public: true
+    arguments:
+      $arrConfig: '%shopify_arrconfig%'
+
+  shopifysdk.smart_collection_update_request:
+    alias: TurboLabIt\ShopifySdk\Request\ShopifySmartCollectionUpdateRequest
+    public: true
+
+  TurboLabIt\ShopifySdk\Request\ShopifyPublicationListRequest:
+    autowire: true
+    public: true
+    arguments:
+      $arrConfig: '%shopify_arrconfig%'
+
+  shopifysdk.publication_list_request:
+    alias: TurboLabIt\ShopifySdk\Request\ShopifyPublicationListRequest
+    public: true
+
+  TurboLabIt\ShopifySdk\Request\ShopifyPublishableRequest:
+    autowire: true
+    public: true
+    arguments:
+      $arrConfig: '%shopify_arrconfig%'
+
+  shopifysdk.publishable_request:
+    alias: TurboLabIt\ShopifySdk\Request\ShopifyPublishableRequest
     public: true
