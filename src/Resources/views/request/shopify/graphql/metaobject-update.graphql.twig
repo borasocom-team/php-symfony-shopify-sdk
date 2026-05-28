@@ -1,0 +1,21 @@
+{# https://shopify.dev/docs/api/admin-graphql/latest/mutations/metaobjectUpdate #}
+mutation {
+  metaobjectUpdate(id: "{{ id }}", metaobject: {
+    fields: [
+      {%- for f in fields %}
+      { key: "{{ f.key }}", value: {{ f.value|json_encode|raw }} }{% if not loop.last %},{% endif %}
+      {%- endfor %}
+    ]
+  }) {
+    metaobject {
+      id
+      handle
+      displayName
+    }
+    userErrors {
+      field
+      message
+      code
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{# https://shopify.dev/docs/api/admin-graphql/latest/mutations/metaobjectDelete #}
+mutation {
+  metaobjectDelete(id: "{{ id }}") {
+    deletedId
+    userErrors {
+      field
+      message
+      code
+    }
+  }
+}

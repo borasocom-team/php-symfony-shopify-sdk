@@ -1,0 +1,9 @@
+{# https://shopify.dev/docs/api/admin-graphql/latest/queries/metaobjectDefinitionByType #}
+query {
+  metaobjectDefinitionByType(type: "{{ type }}") {
+    id
+    type
+    name
+    displayNameKey
+  }
+}

@@ -1,0 +1,16 @@
+{# https://shopify.dev/docs/api/admin-graphql/latest/queries/metaobjects #}
+{
+  metaobjects(type: "{{ type }}", first: {{ shopify_config.results_per_page }}{% if afterCursor is defined and afterCursor %}, after: "{{ afterCursor }}"{% endif %}) {
+    edges {
+      node {
+        id
+        handle
+        displayName
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}

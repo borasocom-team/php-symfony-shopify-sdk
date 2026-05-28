@@ -1,0 +1,22 @@
+{# https://shopify.dev/docs/api/admin-graphql/latest/mutations/metaobjectCreate #}
+mutation {
+  metaobjectCreate(metaobject: {
+    type: "{{ type }}",
+    fields: [
+      {%- for f in fields %}
+      { key: "{{ f.key }}", value: {{ f.value|json_encode|raw }} }{% if not loop.last %},{% endif %}
+      {%- endfor %}
+    ]
+  }) {
+    metaobject {
+      id
+      handle
+      displayName
+    }
+    userErrors {
+      field
+      message
+      code
+    }
+  }
+}

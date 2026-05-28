@@ -2,6 +2,8 @@
   "name": "turbolabit/php-symfony-shopify-sdk",
   "description": "",
   "type": "symfony-bundle",
+  "minimum-stability": "dev",
+  "prefer-stable": true,
   "autoload": {
     "psr-4": {
       "TurboLabIt\\ShopifySdk\\": "src/"

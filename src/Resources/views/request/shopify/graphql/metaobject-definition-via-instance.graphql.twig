@@ -1,0 +1,16 @@
+{# Fallback definition lookup: some definitions are invisible to metaobjectDefinitionByType depending on
+   access-mode settings, but every instance still exposes `definition { id displayNameKey }`. We just read
+   the first instance and snapshot the definition from there. #}
+{
+  metaobjects(type: "{{ type }}", first: 1) {
+    edges {
+      node {
+        definition {
+          id
+          type
+          displayNameKey
+        }
+      }
+    }
+  }
+}
