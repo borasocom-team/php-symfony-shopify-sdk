@@ -106,17 +106,25 @@ class ShopifyMetaobjectRequest extends ShopifyBaseAdminRequest
     }
 
 
-    public function findOrCreateByDisplayName(string $type, string $displayName) : string
+    public function findOrCreateByDisplayName(string $type, string $displayName, ?string $status = null) : string
     {
         $existing = $this->findByDisplayName($type, $displayName);
         if($existing !== null) {
+            // Pre-existing instance: caller said not to mutate (vedi "Don't worry about the current MetaObjects").
+            // If the application wants to promote DRAFT → ACTIVE on existing nodes, that's a separate concern.
             return $existing->id;
         }
-        return $this->create($type, $displayName);
+        return $this->create($type, $displayName, $status);
     }
 
 
-    public function create(string $type, string $displayName) : string
+    /**
+     * Create a metaobject. When `$status` is null (default), Shopify uses its server-side default (DRAFT for
+     * publishable definitions). Pass 'ACTIVE' to publish immediately. Pass 'DRAFT' to be explicit. The value is
+     * embedded as a GraphQL enum literal — no quoting — so any custom string that resolves to a valid
+     * `MetaobjectStatus` value works.
+     */
+    public function create(string $type, string $displayName, ?string $status = null) : string
     {
         $fieldKey = $this->resolveDisplayNameFieldKey($type);
 
@@ -124,6 +132,7 @@ class ShopifyMetaobjectRequest extends ShopifyBaseAdminRequest
             $this
                 ->setQueryFromTemplate([
                     'type'   => $type,
+                    'status' => $status,
                     'fields' => [['key' => $fieldKey, 'value' => $displayName]],
                 ], 'metaobject-create', true)
                 ->connector->send($this);

@@ -2,6 +2,11 @@
 mutation {
   metaobjectCreate(metaobject: {
     type: "{{ type }}",
+    {%- if status is defined and status %}
+    capabilities: {
+      publishable: { status: {{ status }} }
+    },
+    {%- endif %}
     fields: [
       {%- for f in fields %}
       { key: "{{ f.key }}", value: {{ f.value|json_encode|raw }} }{% if not loop.last %},{% endif %}
