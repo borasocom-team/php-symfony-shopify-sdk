@@ -17,6 +17,16 @@ class ShopifyProductListRequest extends ShopifyBaseAdminRequest
     }
 
 
+    /**
+     * Bulk-read EVERY product regardless of status (active, draft, archived), indexed by Shopify GID. Use this
+     * (instead of getAllActive) when you need drafts too — e.g. a full sync that must revive DRAFT products.
+     */
+    public function getAll() : array
+    {
+        return $this->runProductBulkQuery('');
+    }
+
+
     protected function runProductBulkQuery(string $shopifyProductsQuery) : array
     {
         $response =

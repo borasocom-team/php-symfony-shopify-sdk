@@ -153,3 +153,13 @@ services:
   shopifysdk.product_bulk_status_request:
     alias: TurboLabIt\ShopifySdk\Request\ShopifyProductBulkStatusRequest
     public: true
+
+  TurboLabIt\ShopifySdk\Request\ShopifyProductBulkSetRequest:
+    autowire: true
+    public: true
+    arguments:
+      $arrConfig: '%shopify_arrconfig%'
+
+  shopifysdk.product_bulk_set_request:
+    alias: TurboLabIt\ShopifySdk\Request\ShopifyProductBulkSetRequest
+    public: true
