@@ -1,0 +1,16 @@
+{# Ask Shopify for a staged upload target to receive a bulk-mutation variables file (JSONL). #}
+mutation {
+    stagedUploadsCreate(input: [{
+        resource: BULK_MUTATION_VARIABLES,
+        filename: {{ filename|json_encode|raw }},
+        mimeType: "text/jsonl",
+        httpMethod: POST
+    }]) {
+        stagedTargets {
+            url
+            resourceUrl
+            parameters { name value }
+        }
+        userErrors { field message }
+    }
+}

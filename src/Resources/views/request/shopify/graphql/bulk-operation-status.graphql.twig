@@ -1,14 +1,18 @@
 {# https://shopify.dev/api/usage/bulk-operations/queries #}
+{# currentBulkOperation is deprecated (API 2026-04) and bulkOperations sort/reverse is unreliable for #}
+{# "most recent", so poll the exact operation we started, by GID, via node(id:). #}
 query {
-    currentBulkOperation {
-        id
-        status
-        errorCode
-        createdAt
-        completedAt
-        objectCount
-        fileSize
-        url
-        partialDataUrl
+    node(id: {{ bulkOpId|json_encode|raw }}) {
+        ... on BulkOperation {
+            id
+            status
+            errorCode
+            createdAt
+            completedAt
+            objectCount
+            fileSize
+            url
+            partialDataUrl
+        }
     }
 }

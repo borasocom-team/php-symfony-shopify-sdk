@@ -17,6 +17,7 @@ abstract class ShopifyBaseRequest extends Request implements HasBodyContract
 {
     const BULK_OP_STATUS_DONE   = 'COMPLETED';
     const BULK_OP_STATUS_FAIL   = 'FAILED';
+    const BULK_STATUS_TEMPLATE  = '@ShopifySdk/request/shopify/graphql/bulk-operation-status';
 
     protected Method $method = Method::POST;
 
@@ -49,8 +50,12 @@ abstract class ShopifyBaseRequest extends Request implements HasBodyContract
 
         $arrData["shopify_config"] = $this->arrConfig;
 
-        $template = $this->templateDir . ($overrideTemplateName ?? $this->templateFile) . ".graphql.twig";
-        $graphQlQuery = $this->twig->render($template, $arrData);
+        // names targeting a Twig namespace (e.g. '@ShopifySdk/...') are absolute — don't prepend templateDir,
+        // so a request that overrides templateDir for its own queries can still reach shared SDK templates
+        $templateName   = $overrideTemplateName ?? $this->templateFile;
+        $templateDir    = str_starts_with($templateName, '@') ? '' : $this->templateDir;
+        $template       = $templateDir . $templateName . ".graphql.twig";
+        $graphQlQuery   = $this->twig->render($template, $arrData);
 
         return $this->setQuery($graphQlQuery, $queryIsJson);
     }
@@ -84,22 +89,30 @@ abstract class ShopifyBaseRequest extends Request implements HasBodyContract
     public function buildFromBulkResponse(Response $response,  bool $queryIsJson = false) : array
     {
         $errorMessages  = [];
-        $this->parseResponse($response, $errorMessages);
+        $oSubmit        = $this->parseResponse($response, $errorMessages);
         $this->throwOnErrors($errorMessages, $response);
+
+        // currentBulkOperation is deprecated (API 2026-04) and bulkOperations sort/reverse is unreliable for
+        // "most recent", so poll the exact operation we just started, by GID, via node(id:).
+        $bulkOpId =
+            $oSubmit->data->bulkOperationRunQuery->bulkOperation->id
+            ?? $oSubmit->data->bulkOperationRunMutation->bulkOperation->id
+            ?? null;
 
         // While the operation is running, you need to poll to see its progress
         do {
             $response =
                 $this
-                    ->setQueryFromTemplate([], 'bulk-operation-status', $queryIsJson)
+                    ->setQueryFromTemplate(['bulkOpId' => $bulkOpId], static::BULK_STATUS_TEMPLATE, $queryIsJson)
                     ->connector->send($this);
 
             $errorMessages  = [];
             $oResponse      = $this->parseResponse($response, $errorMessages);
             $this->throwOnErrors($errorMessages, $response);
 
-            $bulkOpStatus   = $oResponse->data->currentBulkOperation->status ?? null;
-            $bulkOpIsDone   = strtoupper($bulkOpStatus) == static::BULK_OP_STATUS_DONE;
+            $oCurrentOp     = $oResponse->data->node ?? null;
+            $bulkOpStatus   = $oCurrentOp->status ?? null;
+            $bulkOpIsDone   = strtoupper((string)$bulkOpStatus) == static::BULK_OP_STATUS_DONE;
 
             if( !$bulkOpIsDone ) {
                 sleep(2);
@@ -108,7 +121,7 @@ abstract class ShopifyBaseRequest extends Request implements HasBodyContract
         } while(!$bulkOpIsDone);
 
         // When an operation is completed, a JSONL output file is available for download at the URL specified in the url field
-        $dataUrl = $oResponse->data->currentBulkOperation->url ?? null;
+        $dataUrl = $oCurrentOp->url ?? null;
 
         // there are NO items
         if( empty($dataUrl) ) {
@@ -177,10 +190,19 @@ abstract class ShopifyBaseRequest extends Request implements HasBodyContract
             }
         }
 
-        $bulkStatus = $oResponse->data->currentBulkOperation->status ?? null;
+        if( !empty($oResponse->data->bulkOperationRunMutation->userErrors) ) {
+
+            foreach($oResponse->data->bulkOperationRunMutation->userErrors as $oneError) {
+                $arrErrorMessages[] = $oneError->message;
+            }
+        }
+
+        // currentBulkOperation is deprecated (API 2026-04) → we poll the op by GID via node(id:)
+        $oBulkOp    = $oResponse->data->node ?? null;
+        $bulkStatus = $oBulkOp->status ?? null;
         if( !empty($bulkStatus) && strtoupper($bulkStatus) ==  static::BULK_OP_STATUS_FAIL ) {
 
-            $bulkErrorCode = $oResponse->data->currentBulkOperation->errorCode ?? null;
+            $bulkErrorCode = $oBulkOp->errorCode ?? null;
             $arrErrorMessages[] = "Bulk operation failed: ##$bulkErrorCode##";
         }
 

@@ -1,0 +1,11 @@
+{# Run the given mutation as one async bulk mutation over the uploaded JSONL variables file. #}
+{# json_encode turns the strings into valid GraphQL string literals; setQuery(queryIsJson=true) JSON-wraps the doc. #}
+mutation {
+    bulkOperationRunMutation(
+        mutation: {{ mutation|json_encode|raw }},
+        stagedUploadPath: {{ stagedUploadPath|json_encode|raw }}
+    ) {
+        bulkOperation { id status }
+        userErrors { field message }
+    }
+}

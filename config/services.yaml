@@ -123,3 +123,33 @@ services:
   shopifysdk.metaobject_request:
     alias: TurboLabIt\ShopifySdk\Request\ShopifyMetaobjectRequest
     public: true
+
+  TurboLabIt\ShopifySdk\Request\ShopifyBulkMutationRequest:
+    autowire: true
+    public: true
+    arguments:
+      $arrConfig: '%shopify_arrconfig%'
+
+  shopifysdk.bulk_mutation_request:
+    alias: TurboLabIt\ShopifySdk\Request\ShopifyBulkMutationRequest
+    public: true
+
+  TurboLabIt\ShopifySdk\Request\ShopifyProductListRequest:
+    autowire: true
+    public: true
+    arguments:
+      $arrConfig: '%shopify_arrconfig%'
+
+  shopifysdk.product_list_request:
+    alias: TurboLabIt\ShopifySdk\Request\ShopifyProductListRequest
+    public: true
+
+  TurboLabIt\ShopifySdk\Request\ShopifyProductBulkStatusRequest:
+    autowire: true
+    public: true
+    arguments:
+      $arrConfig: '%shopify_arrconfig%'
+
+  shopifysdk.product_bulk_status_request:
+    alias: TurboLabIt\ShopifySdk\Request\ShopifyProductBulkStatusRequest
+    public: true

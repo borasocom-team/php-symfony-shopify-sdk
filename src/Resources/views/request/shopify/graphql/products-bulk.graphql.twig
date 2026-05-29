@@ -1,0 +1,23 @@
+{# Bulk QUERY: stream products matching the given search. Subclasses add node fields via the productField block. #}
+{# Rendered with queryIsJson=true. No nested connections → each JSONL line is a single Product node. #}
+mutation {
+    bulkOperationRunQuery(
+        query:"""
+        {
+          products(query: "{{ shopifyProductsQuery|raw }}") {
+            edges {
+              node {
+                id
+                status
+                tags
+                {% block productField %}{% endblock %}
+              }
+            }
+          }
+        }
+        """
+    ) {
+        bulkOperation { id status }
+        userErrors { field message }
+    }
+}
