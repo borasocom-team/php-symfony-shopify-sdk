@@ -5,6 +5,8 @@ namespace TurboLabIt\ShopifySdk\Request;
 /**
  * Bulk-reads products from Shopify. Each returned node carries id, status, tags[] (plus whatever extra fields
  * a subclass injects via the `productField` Twig block of the products-bulk template), indexed by Shopify GID.
+ * If the subclass block queries the `variants` connection, each variant arrives as a child JSONL line and is
+ * re-attached to its product as `->variants[]` (plain array of variant nodes).
  */
 class ShopifyProductListRequest extends ShopifyBaseAdminRequest
 {
@@ -37,9 +39,22 @@ class ShopifyProductListRequest extends ShopifyBaseAdminRequest
         // buildFromBulkResponse() throws on bulkOperationRunQuery userErrors, polls node(id:), downloads the JSONL
         $arrLines = $this->buildFromBulkResponse($response, true);
 
-        // our query has no nested connections, so each JSONL line is a Product node
+        // Top-level JSONL lines are Product nodes. A subclass template may add nested connections (e.g.
+        // variants): those arrive as separate child lines carrying __parentId — Shopify guarantees the parent
+        // line precedes its children, so a single pass can re-attach them.
         $arrProducts = [];
         foreach($arrLines as $node) {
+
+            $parentId = (string)($node->__parentId ?? '');
+
+            if( $parentId !== '' ) {
+                // child of a nested connection → re-attach ProductVariant rows under their product
+                if( isset($arrProducts[$parentId]) && stripos((string)($node->id ?? ''), '/ProductVariant/') !== false ) {
+                    $arrProducts[$parentId]->variants   ??= [];
+                    $arrProducts[$parentId]->variants[] = $node;
+                }
+                continue;
+            }
 
             if( empty($node->id) || stripos($node->id, '/Product/') === false ) {
                 continue;

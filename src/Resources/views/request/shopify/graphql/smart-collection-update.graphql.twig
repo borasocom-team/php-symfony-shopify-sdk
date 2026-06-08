@@ -1,15 +1,15 @@
 {# https://shopify.dev/docs/api/admin-graphql/latest/mutations/collectionUpdate #}
 mutation {
   collectionUpdate(input: {
-    id:     "{{ id }}",
-    title:  "{{ title }}"
+    id:     {{ id|json_encode|raw }},
+    title:  {{ title|json_encode|raw }}
     {%- if ruleSet is defined and ruleSet -%}
     ,
     ruleSet: {
       appliedDisjunctively: {{ ruleSet.appliedDisjunctively|default(false) ? 'true' : 'false' }},
       rules: [
         {%- for r in ruleSet.rules %}
-        { column: {{ r.column }}, relation: {{ r.relation }}, condition: "{{ r.condition }}" }{% if not loop.last %},{% endif %}
+        { column: {{ r.column }}, relation: {{ r.relation }}, condition: {{ r.condition|json_encode|raw }} }{% if not loop.last %},{% endif %}
         {%- endfor %}
       ]
     }

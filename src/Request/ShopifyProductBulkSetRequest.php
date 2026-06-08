@@ -8,15 +8,16 @@ namespace TurboLabIt\ShopifySdk\Request;
  * ShopifyBulkMutationRequest). Sibling of ShopifyProductBulkStatusRequest: that one bulk-sets `status`, this
  * one bulk-sets the whole product.
  *
- * `productSet` upserts: a row WITH `id` updates, a row WITHOUT creates. setMany() takes generic single-variant
- * product descriptors (see buildSetInput()) — title, vendor, productType, tags, status, a single variant with
- * SKU/price/barcode/inventory, and arbitrary metafields — and applies them all in one bulk op. It carries no
- * domain knowledge (e.g. which metafields mean what): the caller supplies the descriptors.
+ * `productSet` upserts: a row WITH `id` updates, a row WITHOUT creates. setMany() takes generic product
+ * descriptors (see buildSetInput()) — title, vendor, productType, tags, status, arbitrary metafields, and EITHER
+ * a single default-option variant (legacy "1 SKU = 1 product" shape, top-level sku/price/...) OR a list of
+ * variants under a named option (e.g. "Calibro") via the `variants` + `optionName` keys. It carries no domain
+ * knowledge (e.g. which metafields mean what, what the option axis means): the caller supplies the descriptors.
  *
  * ⚠️ The exact ProductVariantSetInput shape (SKU under `inventoryItem`, `inventoryQuantities` at a location,
- * the reserved `Title`/`Default Title` default option) is API-version sensitive and was written without live
- * schema validation. It is assembled in ONE place (buildSetInput) so a first staging run / validate_graphql
- * can pin any field drift in a single edit.
+ * the reserved `Title`/`Default Title` default option, the named-option `productOptions`/`optionValues` pairing)
+ * is API-version sensitive. It is assembled in ONE place (buildSetInput) so a staging run / validate_graphql can
+ * pin any field drift in a single edit.
  */
 class ShopifyProductBulkSetRequest extends ShopifyBulkMutationRequest
 {
@@ -35,6 +36,10 @@ class ShopifyProductBulkSetRequest extends ShopifyBulkMutationRequest
 
     protected ?string $primaryLocationGid = null;
 
+    /** GIDs of the products upserted by the most recent setMany() call (created + updated), harvested from the
+     *  bulk-mutation results — so the caller can, e.g., publish freshly created products to sales channels. */
+    protected array $arrLastUpsertedGids = [];
+
 
     /**
      * @param array $arrProducts list of generic single-variant product descriptors (see buildSetInput())
@@ -42,6 +47,8 @@ class ShopifyProductBulkSetRequest extends ShopifyBulkMutationRequest
      */
     public function setMany(array $arrProducts) : array
     {
+        $this->arrLastUpsertedGids = [];
+
         if( empty($arrProducts) ) {
             return [];
         }
@@ -52,62 +59,137 @@ class ShopifyProductBulkSetRequest extends ShopifyBulkMutationRequest
             array_values($arrProducts)
         );
 
-        return $this->collectRowErrors($this->run(static::SET_MUTATION, $arrVariables));
+        $arrLines                  = $this->run(static::SET_MUTATION, $arrVariables);
+        $this->arrLastUpsertedGids = $this->collectProductGids($arrLines);
+
+        return $this->collectRowErrors($arrLines);
+    }
+
+
+    /** GIDs of the products upserted by the last setMany() call (created + updated). */
+    public function getLastUpsertedGids() : array
+    {
+        return $this->arrLastUpsertedGids;
     }
 
 
     /**
-     * Map one generic single-variant product descriptor to a Shopify ProductSetInput. Expected $product keys:
+     * Harvest the upserted product GIDs from the bulk-mutation result JSONL (same version-dependent shape probing
+     * as collectRowErrors). Only rows that actually produced a product (no blocking userError) carry one.
+     *
+     * @return string[]
+     */
+    protected function collectProductGids(array $arrLines) : array
+    {
+        $arrGids = [];
+        foreach($arrLines as $oLine) {
+
+            $gid =
+                $oLine->productSet->product->id
+                ?? $oLine->data->productSet->product->id
+                ?? $oLine->product->id
+                ?? null;
+
+            if( !empty($gid) ) {
+                $arrGids[] = (string)$gid;
+            }
+        }
+
+        return $arrGids;
+    }
+
+
+    /**
+     * Map one generic product descriptor to a Shopify ProductSetInput. Product-level keys:
      *  - id            ?string   Shopify product GID (present → update; absent/null → create)
-     *  - sku            string   variant SKU (set on the variant's inventoryItem)
      *  - title          string
      *  - handle        ?string   set on CREATE only (null on update → existing handle preserved)
      *  - vendor         string
      *  - productType    string
      *  - tags           string[] complete tag list (productSet REPLACES the list)
      *  - status        ?string   ACTIVE/DRAFT to set; null → leave unchanged
-     *  - price          string   variant price, e.g. "147.00"
-     *  - barcode       ?string   variant barcode (omitted when empty)
-     *  - available      int      stock to set at the primary location
-     *  - allowBackorder bool     CONTINUE vs DENY when out of stock
-     *  - metafields     array[]  Shopify MetafieldInput rows (namespace/key/type/value) — caller-supplied
+     *  - metafields     array[]  PRODUCT-level Shopify MetafieldInput rows (namespace/key/type/value)
+     *
+     * Variants come EITHER as a named-option list or as the legacy single default-option variant:
+     *  - optionName    ?string   name of the single product option (e.g. "Calibro"); null/'' → default Title option
+     *  - variants       array[]  one row per variant, each: sku, price, available(int), allowBackorder(bool),
+     *                            barcode(?string), metafields(array[]), optionValue(string — the option value,
+     *                            ignored when optionName is null)
+     * When `variants` is absent the LEGACY single-variant shape is used instead: top-level sku/price/barcode/
+     * available/allowBackorder + variantMetafields → one default `Title`/`Default Title` variant.
      */
     protected function buildSetInput(array $product, string $locationGid) : array
     {
-        $sku = (string)($product['sku'] ?? '');
+        // Legacy single-variant descriptor (top-level sku/price/...) → normalize into the `variants` list shape,
+        // forcing the default Title option, so the rest of the method has a single code path.
+        $arrVariantsDesc = $product['variants'] ?? null;
+        $optionName      = (string)($product['optionName'] ?? '');
 
-        $variant = [
-            'optionValues'  => [
-                ['optionName' => static::DEFAULT_OPTION_NAME, 'name' => static::DEFAULT_OPTION_VALUE],
-            ],
-            'price'             => (string)($product['price'] ?? '0'),
-            'inventoryPolicy'   => !empty($product['allowBackorder']) ? 'CONTINUE' : 'DENY',
-            'inventoryItem'     => [
-                'sku'       => $sku,
-                'tracked'   => true,
-            ],
-            'inventoryQuantities' => [
-                [
-                    'locationId'    => $locationGid,
-                    'name'          => static::INVENTORY_STATE_AVAILABLE,
-                    'quantity'      => (int)($product['available'] ?? 0),
-                ],
-            ],
-        ];
-
-        if( !empty($product['barcode']) ) {
-            $variant['barcode'] = (string)$product['barcode'];
+        if( $arrVariantsDesc === null ) {
+            $arrVariantsDesc = [[
+                'sku'               => $product['sku']             ?? '',
+                'price'             => $product['price']           ?? '0',
+                'barcode'           => $product['barcode']         ?? null,
+                'available'         => $product['available']       ?? 0,
+                'allowBackorder'    => $product['allowBackorder']  ?? false,
+                'metafields'        => $product['variantMetafields'] ?? [],
+            ]];
+            $optionName = '';   // force the default Title option
         }
+
+        $useDefaultOption = ($optionName === '');
+
+        $arrVariants     = [];
+        $arrOptionValues = [];   // distinct named-option values, for productOptions (unique per product)
+        foreach($arrVariantsDesc as $varDesc) {
+
+            if( $useDefaultOption ) {
+                $arrOptValues = [['optionName' => static::DEFAULT_OPTION_NAME, 'name' => static::DEFAULT_OPTION_VALUE]];
+            } else {
+                $valueName         = (string)($varDesc['optionValue'] ?? '');
+                $arrOptValues      = [['optionName' => $optionName, 'name' => $valueName]];
+                $arrOptionValues[] = ['name' => $valueName];
+            }
+
+            $variant = [
+                'optionValues'      => $arrOptValues,
+                'price'             => (string)($varDesc['price'] ?? '0'),
+                'inventoryPolicy'   => !empty($varDesc['allowBackorder']) ? 'CONTINUE' : 'DENY',
+                'inventoryItem'     => [
+                    'sku'       => (string)($varDesc['sku'] ?? ''),
+                    'tracked'   => true,
+                ],
+                'inventoryQuantities' => [
+                    [
+                        'locationId'    => $locationGid,
+                        'name'          => static::INVENTORY_STATE_AVAILABLE,
+                        'quantity'      => (int)($varDesc['available'] ?? 0),
+                    ],
+                ],
+            ];
+
+            if( !empty($varDesc['barcode']) ) {
+                $variant['barcode'] = (string)$varDesc['barcode'];
+            }
+
+            if( !empty($varDesc['metafields']) ) {
+                $variant['metafields'] = array_values($varDesc['metafields']);
+            }
+
+            $arrVariants[] = $variant;
+        }
+
+        $productOptions = $useDefaultOption
+            ? [['name' => static::DEFAULT_OPTION_NAME, 'values' => [['name' => static::DEFAULT_OPTION_VALUE]]]]
+            : [['name' => $optionName, 'values' => array_values($arrOptionValues)]];
 
         $input = [
             'title'             => (string)($product['title'] ?? ''),
             'vendor'            => (string)($product['vendor'] ?? ''),
             'productType'       => (string)($product['productType'] ?? ''),
             'tags'              => array_values($product['tags'] ?? []),
-            'productOptions'    => [
-                ['name' => static::DEFAULT_OPTION_NAME, 'values' => [['name' => static::DEFAULT_OPTION_VALUE]]],
-            ],
-            'variants'          => [$variant],
+            'productOptions'    => $productOptions,
+            'variants'          => $arrVariants,
             'metafields'        => array_values($product['metafields'] ?? []),
         ];
 

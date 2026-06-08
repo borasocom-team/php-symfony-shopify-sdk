@@ -94,6 +94,14 @@ class ShopifyPublishableRequest extends ShopifyBaseAdminRequest
     }
 
 
+    /** Every sales-channel publication id on the store (cached by the underlying list request). Public so callers
+     *  can publish many resources to the same id set without re-fetching, and know the total channel count. */
+    public function getAllPublicationIds() : array
+    {
+        return $this->allPublicationIds();
+    }
+
+
     protected function allPublicationIds() : array
     {
         return array_map(fn($pub) => $pub->id, $this->shopifyPublications->list());
