@@ -8,8 +8,128 @@ class ShopifyMetaobjectRequest extends ShopifyBaseAdminRequest
 {
     protected string $templateFile = 'metaobjects-by-type';
 
-    /** @var array<string, array{id:string, displayNameFieldKey:?string}> */
+    /** @var array<string, array{id:string, displayNameFieldKey:?string, fieldKeys:?array<int,string>}> */
     private array $arrTypeDefinitions = [];
+
+    /** Field keys added the last time ensureDefinition() reconciled an existing definition (for caller logging). */
+    private array $arrLastReconciledFieldKeys = [];
+
+
+    /**
+     * Ensure a metaobject definition of $type exists (idempotent): create it with the given fields when absent,
+     * else reuse the existing one AND reconcile any field definitions present in $fieldDefinitions but missing on
+     * the store (so adding a new field to an already-deployed definition takes effect). Returns the definition GID.
+     * $displayNameKey must be one of the field keys (used as the entry's display name, which
+     * findOrCreateByDisplayName() looks up by).
+     *
+     * @param array<int,array{key:string,name:string,type:string}> $fieldDefinitions
+     */
+    public function ensureDefinition(string $type, string $name, array $fieldDefinitions, string $displayNameKey = 'label') : string
+    {
+        $this->arrLastReconciledFieldKeys = [];
+
+        try {
+            $def = $this->getDefinition($type);
+        } catch (ShopifyResponseException) {
+            return $this->createDefinition($type, $name, $fieldDefinitions, $displayNameKey);
+        }
+
+        $this->reconcileDefinitionFields($type, $def, $fieldDefinitions);
+
+        return $def['id'];
+    }
+
+
+    /**
+     * Field keys added by the most recent ensureDefinition() call when it reconciled an existing definition.
+     * Empty when the definition was freshly created or already had every field.
+     *
+     * @return array<int,string>
+     */
+    public function getLastReconciledFieldKeys() : array
+    {
+        return $this->arrLastReconciledFieldKeys;
+    }
+
+
+    /**
+     * Add to an existing metaobject definition any field in $fieldDefinitions whose key is not already present.
+     * No-op when the definition's field keys couldn't be introspected (instance-based fallback) or nothing is missing.
+     *
+     * @param array{id:string, displayNameFieldKey:?string, fieldKeys:?array<int,string>} $def
+     * @param array<int,array{key:string,name:string,type:string}> $fieldDefinitions
+     */
+    private function reconcileDefinitionFields(string $type, array $def, array $fieldDefinitions) : void
+    {
+        $arrExistingKeys = $def['fieldKeys'] ?? null;
+        if($arrExistingKeys === null) {
+            // couldn't introspect existing fields (definition resolved via instance fallback) — skip reconcile
+            return;
+        }
+
+        $arrMissing = array_values(array_filter(
+            $fieldDefinitions,
+            fn(array $fd) => !in_array($fd['key'], $arrExistingKeys, true)
+        ));
+
+        if( empty($arrMissing) ) {
+            return;
+        }
+
+        $response =
+            $this
+                ->setQueryFromTemplate([
+                    'id'               => $def['id'],
+                    'fieldDefinitions' => $arrMissing,
+                ], 'metaobject-definition-update', true)
+                ->connector->send($this);
+
+        $oResponse      = $this->buildFromResponse($response);
+        $arrUserErrors  = $oResponse->data->metaobjectDefinitionUpdate->userErrors ?? [];
+        $this->throwOnUserErrors('metaobjectDefinitionUpdate', $arrUserErrors);
+
+        // invalidate the cached definition so its fieldKeys are re-read on next access
+        unset($this->arrTypeDefinitions[$type]);
+
+        $this->arrLastReconciledFieldKeys = array_map(fn(array $fd) => $fd['key'], $arrMissing);
+    }
+
+
+    /**
+     * Create a metaobject definition. Prefer ensureDefinition() unless you know it doesn't exist.
+     *
+     * @param array<int,array{key:string,name:string,type:string}> $fieldDefinitions
+     */
+    public function createDefinition(string $type, string $name, array $fieldDefinitions, string $displayNameKey = 'label') : string
+    {
+        $response =
+            $this
+                ->setQueryFromTemplate([
+                    'type'           => $type,
+                    'name'           => $name,
+                    'displayNameKey' => $displayNameKey,
+                    'fieldDefinitions' => $fieldDefinitions,
+                ], 'metaobject-definition-create', true)
+                ->connector->send($this);
+
+        $oResponse      = $this->buildFromResponse($response);
+        $arrUserErrors  = $oResponse->data->metaobjectDefinitionCreate->userErrors ?? [];
+        $this->throwOnUserErrors('metaobjectDefinitionCreate', $arrUserErrors);
+
+        $id = $oResponse->data->metaobjectDefinitionCreate->metaobjectDefinition->id ?? null;
+        if( empty($id) ) {
+            throw new ShopifyResponseException('metaobjectDefinitionCreate returned no id');
+        }
+
+        // seed the definition cache so a subsequent getDefinition()/create() doesn't re-fetch
+        $this->arrTypeDefinitions[$type] = [
+            'id'                  => $id,
+            'displayNameFieldKey' => $displayNameKey,
+            'fieldKeys'           => array_map(fn(array $fd) => $fd['key'], $fieldDefinitions),
+        ];
+
+        return $id;
+    }
 
 
     public function getDefinition(string $type) : array
@@ -28,9 +148,17 @@ class ShopifyMetaobjectRequest extends ShopifyBaseAdminRequest
         $def        = $oResponse->data->metaobjectDefinitionByType ?? null;
 
         if( !empty($def->id) ) {
+            $arrFieldKeys = [];
+            foreach($def->fieldDefinitions ?? [] as $fd) {
+                if( !empty($fd->key) ) {
+                    $arrFieldKeys[] = $fd->key;
+                }
+            }
+
             return $this->arrTypeDefinitions[$type] = [
                 'id'                  => $def->id,
                 'displayNameFieldKey' => $def->displayNameKey ?? null,
+                'fieldKeys'           => $arrFieldKeys,
             ];
         }
 
@@ -53,9 +181,11 @@ class ShopifyMetaobjectRequest extends ShopifyBaseAdminRequest
             );
         }
 
+        // instance-based fallback can't introspect the definition's field list → fieldKeys null (reconcile skipped)
         return $this->arrTypeDefinitions[$type] = [
             'id'                  => $defEdge->id,
             'displayNameFieldKey' => $defEdge->displayNameKey ?? null,
+            'fieldKeys'           => null,
         ];
     }
 
@@ -106,15 +236,60 @@ class ShopifyMetaobjectRequest extends ShopifyBaseAdminRequest
     }
 
 
+    /**
+     * Find the instance whose field $fieldKey holds $value (a stable identity match, e.g. brand_id, that
+     * survives display-name renames). Field values are always strings in the Admin API, so $value is compared
+     * as a string. Returns null when no instance matches.
+     */
+    public function findByFieldValue(string $type, string $fieldKey, string $value) : ?\stdClass
+    {
+        foreach($this->listByType($type) as $mo) {
+            foreach($mo->fields ?? [] as $field) {
+                if( ($field->key ?? null) === $fieldKey && (string)($field->value ?? '') === $value ) {
+                    return $mo;
+                }
+            }
+        }
+        return null;
+    }
+
+
+    /**
+     * Find-or-create by display name — for metaobjects whose NAME is their identity (e.g. shapes, which Foppa
+     * exposes no id for). For anything carrying a stable Foppa id (brands), use findOrCreateByField() instead:
+     * we match Foppa↔Shopify by id, never by name.
+     */
     public function findOrCreateByDisplayName(string $type, string $displayName, ?string $status = null) : string
     {
         $existing = $this->findByDisplayName($type, $displayName);
         if($existing !== null) {
-            // Pre-existing instance: caller said not to mutate (vedi "Don't worry about the current MetaObjects").
-            // If the application wants to promote DRAFT → ACTIVE on existing nodes, that's a separate concern.
             return $existing->id;
         }
         return $this->create($type, $displayName, $status);
+    }
+
+
+    /**
+     * Find-or-create keyed on a stable identity FIELD (e.g. brand_id), never the display name — this is how we
+     * match Foppa↔Shopify. On a match the existing instance is reused as-is (its GID, so every reference
+     * survives); on a miss it's created with the display name + $fields. $fields MUST contain $matchFieldKey.
+     * Display-name changes for an already-existing item are propagated by the owning command's update path
+     * (updateDisplayName), not here.
+     *
+     * @param array<string,scalar> $fields  non-display field values (incl. the match field), keyed by field key
+     */
+    public function findOrCreateByField(string $type, string $matchFieldKey, string $displayName, array $fields, ?string $status = null) : string
+    {
+        if( !array_key_exists($matchFieldKey, $fields) ) {
+            throw new \InvalidArgumentException("findOrCreateByField: \$fields must contain the match key \"$matchFieldKey\"");
+        }
+
+        $existing = $this->findByFieldValue($type, $matchFieldKey, (string)$fields[$matchFieldKey]);
+        if($existing !== null) {
+            return $existing->id;
+        }
+
+        return $this->create($type, $displayName, $status, $fields);
     }
 
 
@@ -124,16 +299,24 @@ class ShopifyMetaobjectRequest extends ShopifyBaseAdminRequest
      * embedded as a GraphQL enum literal — no quoting — so any custom string that resolves to a valid
      * `MetaobjectStatus` value works.
      */
-    public function create(string $type, string $displayName, ?string $status = null) : string
+    public function create(string $type, string $displayName, ?string $status = null, array $extraFields = []) : string
     {
         $fieldKey = $this->resolveDisplayNameFieldKey($type);
+
+        $arrFields = [['key' => $fieldKey, 'value' => $displayName]];
+        foreach($extraFields as $key => $value) {
+            if($key === $fieldKey) {
+                continue; // the display name is already set above
+            }
+            $arrFields[] = ['key' => $key, 'value' => (string)$value];
+        }
 
         $response =
             $this
                 ->setQueryFromTemplate([
                     'type'   => $type,
                     'status' => $status,
-                    'fields' => [['key' => $fieldKey, 'value' => $displayName]],
+                    'fields' => $arrFields,
                 ], 'metaobject-create', true)
                 ->connector->send($this);
 

@@ -1,0 +1,15 @@
+{# https://shopify.dev/docs/api/admin-graphql/latest/mutations/metaobjectDefinitionUpdate #}
+{# Adds field definitions to an existing metaobject definition (idempotent reconcile of new fields). #}
+{# Strings go through |json_encode|raw so special chars (&, ", …) are escaped for GraphQL, never HTML-entitied. #}
+mutation {
+  metaobjectDefinitionUpdate(id: {{ id|json_encode|raw }}, definition: {
+    fieldDefinitions: [
+      {%- for f in fieldDefinitions %}
+      { create: { key: {{ f.key|json_encode|raw }}, name: {{ f.name|json_encode|raw }}, type: {{ f.type|json_encode|raw }} } }{% if not loop.last %},{% endif %}
+      {%- endfor %}
+    ]
+  }) {
+    metaobjectDefinition { id type }
+    userErrors { field message code }
+  }
+}
