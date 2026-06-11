@@ -9,10 +9,11 @@ namespace TurboLabIt\ShopifySdk\Request;
  * one bulk-sets the whole product.
  *
  * `productSet` upserts: a row WITH `id` updates, a row WITHOUT creates. setMany() takes generic product
- * descriptors (see buildSetInput()) — title, vendor, productType, tags, status, arbitrary metafields, and EITHER
- * a single default-option variant (legacy "1 SKU = 1 product" shape, top-level sku/price/...) OR a list of
- * variants under a named option (e.g. "Calibro") via the `variants` + `optionName` keys. It carries no domain
- * knowledge (e.g. which metafields mean what, what the option axis means): the caller supplies the descriptors.
+ * descriptors (see buildSetInput()) — title, vendor, productType, tags, status, arbitrary metafields, media
+ * (product `files` + per-variant `file`, as raw FileSetInput rows), and EITHER a single default-option variant
+ * (legacy "1 SKU = 1 product" shape, top-level sku/price/...) OR a list of variants under a named option (e.g.
+ * "Calibro") via the `variants` + `optionName` keys. It carries no domain knowledge (e.g. which metafields mean
+ * what, what the option axis means, where image URLs come from): the caller supplies the descriptors.
  *
  * ⚠️ The exact ProductVariantSetInput shape (SKU under `inventoryItem`, `inventoryQuantities` at a location,
  * the reserved `Title`/`Default Title` default option, the named-option `productOptions`/`optionValues` pairing)
@@ -109,14 +110,24 @@ class ShopifyProductBulkSetRequest extends ShopifyBulkMutationRequest
      *  - tags           string[] complete tag list (productSet REPLACES the list)
      *  - status        ?string   ACTIVE/DRAFT to set; null → leave unchanged
      *  - metafields     array[]  PRODUCT-level Shopify MetafieldInput rows (namespace/key/type/value)
+     *  - files         ?array[]  product MEDIA as raw Shopify FileSetInput rows ({originalSource: <public url>}
+     *                            or {id: <file gid>}, optional alt/contentType/...), in GALLERY ORDER. `files`
+     *                            is a productSet LIST field (set semantics): when the KEY is present the
+     *                            product's media becomes exactly this list (entries not included are detached;
+     *                            an empty array clears everything); when ABSENT the media is left untouched.
+     *                            A FileSetInput without `id` always creates+ingests a NEW file (duplicate
+     *                            resolution is filename-based) — callers should include the key only when the
+     *                            gallery actually changes, not on every run.
      *
      * Variants come EITHER as a named-option list or as the legacy single default-option variant:
      *  - optionName    ?string   name of the single product option (e.g. "Calibro"); null/'' → default Title option
      *  - variants       array[]  one row per variant, each: sku, price, available(int), allowBackorder(bool),
      *                            barcode(?string), metafields(array[]), optionValue(string — the option value,
-     *                            ignored when optionName is null)
+     *                            ignored when optionName is null), file(?array — one FileSetInput row binding
+     *                            the variant's image; use the SAME originalSource as the product `files` row
+     *                            so Shopify associates that media instead of ingesting twice)
      * When `variants` is absent the LEGACY single-variant shape is used instead: top-level sku/price/barcode/
-     * available/allowBackorder + variantMetafields → one default `Title`/`Default Title` variant.
+     * available/allowBackorder + variantMetafields (+ file) → one default `Title`/`Default Title` variant.
      */
     protected function buildSetInput(array $product, string $locationGid) : array
     {
@@ -133,6 +144,7 @@ class ShopifyProductBulkSetRequest extends ShopifyBulkMutationRequest
                 'available'         => $product['available']       ?? 0,
                 'allowBackorder'    => $product['allowBackorder']  ?? false,
                 'metafields'        => $product['variantMetafields'] ?? [],
+                'file'              => $product['file']            ?? null,
             ]];
             $optionName = '';   // force the default Title option
         }
@@ -176,6 +188,10 @@ class ShopifyProductBulkSetRequest extends ShopifyBulkMutationRequest
                 $variant['metafields'] = array_values($varDesc['metafields']);
             }
 
+            if( !empty($varDesc['file']) ) {
+                $variant['file'] = (array)$varDesc['file'];
+            }
+
             $arrVariants[] = $variant;
         }
 
@@ -192,6 +208,12 @@ class ShopifyProductBulkSetRequest extends ShopifyBulkMutationRequest
             'variants'          => $arrVariants,
             'metafields'        => array_values($product['metafields'] ?? []),
         ];
+
+        // `files` is a LIST field with set semantics: key present = the media becomes exactly this list ([]
+        // clears everything), key absent = media untouched → keyed on presence, NOT on empty()
+        if( isset($product['files']) && is_array($product['files']) ) {
+            $input['files'] = array_values($product['files']);
+        }
 
         if( !empty($product['id']) ) {
             $input['id'] = (string)$product['id'];
