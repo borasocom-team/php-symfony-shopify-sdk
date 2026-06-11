@@ -13,6 +13,13 @@ mutation {
       {%- endfor %}
     ]
     {%- endif %}
+    {%- if capabilities is defined and capabilities|length > 0 %},
+    capabilities: {
+      {%- for capability in capabilities %}
+      {{ capability }}: { enabled: true }{% if not loop.last %},{% endif %}
+      {%- endfor %}
+    }
+    {%- endif %}
   }) {
     updatedDefinition {
       id
