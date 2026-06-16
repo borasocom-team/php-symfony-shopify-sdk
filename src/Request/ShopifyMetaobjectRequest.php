@@ -8,19 +8,19 @@ class ShopifyMetaobjectRequest extends ShopifyBaseAdminRequest
 {
     protected string $templateFile = 'metaobjects-by-type';
 
-    /** @var array<string, array{id:string, displayNameFieldKey:?string, fieldKeys:?array<int,string>}> */
+    /** @var array<string, array{id:string, displayNameFieldKey:?string, fields:?array<string,string>}> $fields = [key => name] */
     private array $arrTypeDefinitions = [];
 
-    /** Field keys added the last time ensureDefinition() reconciled an existing definition (for caller logging). */
+    /** Field keys reconciled (added OR renamed) the last time ensureDefinition() touched an existing definition. */
     private array $arrLastReconciledFieldKeys = [];
 
 
     /**
      * Ensure a metaobject definition of $type exists (idempotent): create it with the given fields when absent,
-     * else reuse the existing one AND reconcile any field definitions present in $fieldDefinitions but missing on
-     * the store (so adding a new field to an already-deployed definition takes effect). Returns the definition GID.
-     * $displayNameKey must be one of the field keys (used as the entry's display name, which
-     * findOrCreateByDisplayName() looks up by).
+     * else reuse the existing one AND reconcile field drift — adds any field in $fieldDefinitions missing on the
+     * store (so a newly-declared field takes effect) and renames any existing field whose label (name) changed
+     * (key/type are immutable). Returns the definition GID. $displayNameKey must be one of the field keys (used as
+     * the entry's display name, which findOrCreateByDisplayName() looks up by).
      *
      * @param array<int,array{key:string,name:string,type:string}> $fieldDefinitions
      */
@@ -41,8 +41,8 @@ class ShopifyMetaobjectRequest extends ShopifyBaseAdminRequest
 
 
     /**
-     * Field keys added by the most recent ensureDefinition() call when it reconciled an existing definition.
-     * Empty when the definition was freshly created or already had every field.
+     * Field keys reconciled (added or renamed) by the most recent ensureDefinition() call on an existing
+     * definition. Empty when the definition was freshly created or already matched the desired fields.
      *
      * @return array<int,string>
      */
@@ -53,34 +53,42 @@ class ShopifyMetaobjectRequest extends ShopifyBaseAdminRequest
 
 
     /**
-     * Add to an existing metaobject definition any field in $fieldDefinitions whose key is not already present.
-     * No-op when the definition's field keys couldn't be introspected (instance-based fallback) or nothing is missing.
+     * Reconcile an existing metaobject definition against $fieldDefinitions: ADD any field whose key is missing,
+     * and RENAME (update `name`) any existing field whose label drifted. key/type are immutable, so renames carry
+     * only key + name. No-op when nothing drifted, or when the field set couldn't be introspected (instance-based
+     * fallback). Never deletes: a field on the store but absent from $fieldDefinitions is left untouched.
      *
-     * @param array{id:string, displayNameFieldKey:?string, fieldKeys:?array<int,string>} $def
+     * @param array{id:string, displayNameFieldKey:?string, fields:?array<string,string>} $def
      * @param array<int,array{key:string,name:string,type:string}> $fieldDefinitions
      */
     private function reconcileDefinitionFields(string $type, array $def, array $fieldDefinitions) : void
     {
-        $arrExistingKeys = $def['fieldKeys'] ?? null;
-        if($arrExistingKeys === null) {
+        $arrExistingFields = $def['fields'] ?? null;
+        if($arrExistingFields === null) {
             // couldn't introspect existing fields (definition resolved via instance fallback) — skip reconcile
             return;
         }
 
-        $arrMissing = array_values(array_filter(
-            $fieldDefinitions,
-            fn(array $fd) => !in_array($fd['key'], $arrExistingKeys, true)
-        ));
+        $arrCreates = [];   // key not on the store yet → add it
+        $arrUpdates = [];   // key present but its label (name) changed → rename it
+        foreach($fieldDefinitions as $fd) {
+            if( !array_key_exists($fd['key'], $arrExistingFields) ) {
+                $arrCreates[] = $fd;
+            } elseif( $arrExistingFields[$fd['key']] !== $fd['name'] ) {
+                $arrUpdates[] = $fd;
+            }
+        }
 
-        if( empty($arrMissing) ) {
+        if( empty($arrCreates) && empty($arrUpdates) ) {
             return;
         }
 
         $response =
             $this
                 ->setQueryFromTemplate([
-                    'id'               => $def['id'],
-                    'fieldDefinitions' => $arrMissing,
+                    'id'      => $def['id'],
+                    'creates' => $arrCreates,
+                    'updates' => $arrUpdates,
                 ], 'metaobject-definition-update', true)
                 ->connector->send($this);
 
@@ -88,10 +96,28 @@ class ShopifyMetaobjectRequest extends ShopifyBaseAdminRequest
         $arrUserErrors  = $oResponse->data->metaobjectDefinitionUpdate->userErrors ?? [];
         $this->throwOnUserErrors('metaobjectDefinitionUpdate', $arrUserErrors);
 
-        // invalidate the cached definition so its fieldKeys are re-read on next access
+        // invalidate the cached definition so its fields are re-read on next access
         unset($this->arrTypeDefinitions[$type]);
 
-        $this->arrLastReconciledFieldKeys = array_map(fn(array $fd) => $fd['key'], $arrMissing);
+        $this->arrLastReconciledFieldKeys = array_map(fn(array $fd) => $fd['key'], array_merge($arrCreates, $arrUpdates));
+    }
+
+
+    /** Delete a metaobject definition and ALL its instances. Irreversible — primarily for teardown/cleanup. */
+    public function deleteDefinition(string $type) : void
+    {
+        $def = $this->getDefinition($type);
+
+        $response =
+            $this
+                ->setQueryFromTemplate(['id' => $def['id']], 'metaobject-definition-delete', true)
+                ->connector->send($this);
+
+        $oResponse      = $this->buildFromResponse($response);
+        $arrUserErrors  = $oResponse->data->metaobjectDefinitionDelete->userErrors ?? [];
+        $this->throwOnUserErrors('metaobjectDefinitionDelete', $arrUserErrors);
+
+        unset($this->arrTypeDefinitions[$type]);
     }
 
 
@@ -125,7 +151,7 @@ class ShopifyMetaobjectRequest extends ShopifyBaseAdminRequest
         $this->arrTypeDefinitions[$type] = [
             'id'                  => $id,
             'displayNameFieldKey' => $displayNameKey,
-            'fieldKeys'           => array_map(fn(array $fd) => $fd['key'], $fieldDefinitions),
+            'fields'              => array_column($fieldDefinitions, 'name', 'key'),
         ];
 
         return $id;
@@ -148,17 +174,17 @@ class ShopifyMetaobjectRequest extends ShopifyBaseAdminRequest
         $def        = $oResponse->data->metaobjectDefinitionByType ?? null;
 
         if( !empty($def->id) ) {
-            $arrFieldKeys = [];
+            $arrFields = [];   // [key => name] — name drives the reconcile rename diff
             foreach($def->fieldDefinitions ?? [] as $fd) {
                 if( !empty($fd->key) ) {
-                    $arrFieldKeys[] = $fd->key;
+                    $arrFields[$fd->key] = $fd->name ?? '';
                 }
             }
 
             return $this->arrTypeDefinitions[$type] = [
                 'id'                  => $def->id,
                 'displayNameFieldKey' => $def->displayNameKey ?? null,
-                'fieldKeys'           => $arrFieldKeys,
+                'fields'              => $arrFields,
             ];
         }
 
@@ -181,11 +207,11 @@ class ShopifyMetaobjectRequest extends ShopifyBaseAdminRequest
             );
         }
 
-        // instance-based fallback can't introspect the definition's field list → fieldKeys null (reconcile skipped)
+        // instance-based fallback can't introspect the definition's field list → fields null (reconcile skipped)
         return $this->arrTypeDefinitions[$type] = [
             'id'                  => $defEdge->id,
             'displayNameFieldKey' => $defEdge->displayNameKey ?? null,
-            'fieldKeys'           => null,
+            'fields'              => null,
         ];
     }
 

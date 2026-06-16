@@ -1,0 +1,8 @@
+{# https://shopify.dev/docs/api/admin-graphql/latest/mutations/metaobjectDefinitionDelete #}
+{# Deletes a metaobject definition (and all its instances). Irreversible — used for teardown/cleanup. #}
+mutation {
+  metaobjectDefinitionDelete(id: {{ id|json_encode|raw }}) {
+    deletedId
+    userErrors { field message code }
+  }
+}
