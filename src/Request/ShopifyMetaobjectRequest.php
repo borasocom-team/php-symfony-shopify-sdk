@@ -281,9 +281,9 @@ class ShopifyMetaobjectRequest extends ShopifyBaseAdminRequest
 
 
     /**
-     * Find-or-create by display name — for metaobjects whose NAME is their identity (e.g. shapes, which Foppa
-     * exposes no id for). For anything carrying a stable Foppa id (brands), use findOrCreateByField() instead:
-     * we match Foppa↔Shopify by id, never by name.
+     * Find-or-create by display name — for metaobjects whose NAME is their identity (i.e. they carry no stable
+     * external id). When an item has a stable identity field, use findOrCreateByField() instead and match on the
+     * id, never on the (mutable) name.
      */
     public function findOrCreateByDisplayName(string $type, string $displayName, ?string $status = null) : string
     {
@@ -296,9 +296,10 @@ class ShopifyMetaobjectRequest extends ShopifyBaseAdminRequest
 
 
     /**
-     * Find-or-create keyed on a stable identity FIELD (e.g. brand_id), never the display name — this is how we
-     * match Foppa↔Shopify. On a match the existing instance is reused as-is (its GID, so every reference
-     * survives); on a miss it's created with the display name + $fields. $fields MUST contain $matchFieldKey.
+     * Find-or-create keyed on a stable identity FIELD (e.g. an external id), never the display name — the
+     * recommended way to match an external record to its metaobject. On a match the existing instance is reused
+     * as-is (its GID, so every reference survives); on a miss it's created with the display name + $fields.
+     * $fields MUST contain $matchFieldKey.
      * Display-name changes for an already-existing item are propagated by the owning command's update path
      * (updateDisplayName), not here.
      *
