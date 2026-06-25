@@ -20,6 +20,8 @@ class ShopifyBulkMutationRequest extends ShopifyBaseAdminRequest
 
     protected string $templateFile = 'bulk-operation-run-mutation';
 
+    protected ?string $primaryLocationGid = null;
+
 
     /**
      * @param string $mutation           the mutation to run once per input, e.g.
@@ -121,6 +123,30 @@ class ShopifyBulkMutationRequest extends ShopifyBaseAdminRequest
         }
 
         throw new ShopifyResponseException('Staged target is missing the "key" parameter (stagedUploadPath)');
+    }
+
+
+    /**
+     * Resolve (and cache) the GID of the location whose inventory we drive — the first location returned (the
+     * connector targets a single-location store). Throws rather than silently skipping inventory. Shared by every
+     * bulk-mutation request that has to address a location (productSet, inventorySetQuantities, variant create).
+     */
+    public function getPrimaryLocationGid() : string
+    {
+        if( $this->primaryLocationGid !== null ) {
+            return $this->primaryLocationGid;
+        }
+
+        $query     = 'query { locations(first: 1) { edges { node { id } } } }';
+        $response  = $this->setQuery($query, true)->connector->send($this);
+        $oResponse = $this->buildFromResponse($response);
+
+        $gid = $oResponse->data->locations->edges[0]->node->id ?? null;
+        if( empty($gid) ) {
+            throw new \RuntimeException(static::class . ': could not resolve a primary Shopify location for inventory.');
+        }
+
+        return $this->primaryLocationGid = $gid;
     }
 
 

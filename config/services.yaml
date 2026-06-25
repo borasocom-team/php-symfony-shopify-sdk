@@ -163,3 +163,43 @@ services:
   shopifysdk.product_bulk_set_request:
     alias: TurboLabIt\ShopifySdk\Request\ShopifyProductBulkSetRequest
     public: true
+
+  TurboLabIt\ShopifySdk\Request\ShopifyProductBulkUpdateRequest:
+    autowire: true
+    public: true
+    arguments:
+      $arrConfig: '%shopify_arrconfig%'
+
+  shopifysdk.product_bulk_update_request:
+    alias: TurboLabIt\ShopifySdk\Request\ShopifyProductBulkUpdateRequest
+    public: true
+
+  TurboLabIt\ShopifySdk\Request\ShopifyInventorySetRequest:
+    autowire: true
+    public: true
+    arguments:
+      $arrConfig: '%shopify_arrconfig%'
+
+  shopifysdk.inventory_set_request:
+    alias: TurboLabIt\ShopifySdk\Request\ShopifyInventorySetRequest
+    public: true
+
+  TurboLabIt\ShopifySdk\Request\ShopifyProductVariantsBulkUpdateRequest:
+    autowire: true
+    public: true
+    arguments:
+      $arrConfig: '%shopify_arrconfig%'
+
+  shopifysdk.product_variants_bulk_update_request:
+    alias: TurboLabIt\ShopifySdk\Request\ShopifyProductVariantsBulkUpdateRequest
+    public: true
+
+  TurboLabIt\ShopifySdk\Request\ShopifyProductVariantsBulkCreateRequest:
+    autowire: true
+    public: true
+    arguments:
+      $arrConfig: '%shopify_arrconfig%'
+
+  shopifysdk.product_variants_bulk_create_request:
+    alias: TurboLabIt\ShopifySdk\Request\ShopifyProductVariantsBulkCreateRequest
+    public: true

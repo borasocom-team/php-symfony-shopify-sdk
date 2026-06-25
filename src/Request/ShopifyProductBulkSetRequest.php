@@ -35,8 +35,6 @@ class ShopifyProductBulkSetRequest extends ShopifyBulkMutationRequest
         'mutation call($input: ProductSetInput!) { productSet(input: $input) ' .
         '{ product { id status } userErrors { field message } } }';
 
-    protected ?string $primaryLocationGid = null;
-
     /** GIDs of the products upserted by the most recent setMany() call (created + updated), harvested from the
      *  bulk-mutation results — so the caller can, e.g., publish freshly created products to sales channels. */
     protected array $arrLastUpsertedGids = [];
@@ -230,29 +228,6 @@ class ShopifyProductBulkSetRequest extends ShopifyBulkMutationRequest
         }
 
         return $input;
-    }
-
-
-    /**
-     * Resolve (and cache) the GID of the location whose inventory we drive — the first location returned (the
-     * connector targets a single-location store). Throws rather than silently skipping inventory.
-     */
-    public function getPrimaryLocationGid() : string
-    {
-        if( $this->primaryLocationGid !== null ) {
-            return $this->primaryLocationGid;
-        }
-
-        $query     = 'query { locations(first: 1) { edges { node { id } } } }';
-        $response  = $this->setQuery($query, true)->connector->send($this);
-        $oResponse = $this->buildFromResponse($response);
-
-        $gid = $oResponse->data->locations->edges[0]->node->id ?? null;
-        if( empty($gid) ) {
-            throw new \RuntimeException(static::class . ': could not resolve a primary Shopify location for inventory.');
-        }
-
-        return $this->primaryLocationGid = $gid;
     }
 
 
