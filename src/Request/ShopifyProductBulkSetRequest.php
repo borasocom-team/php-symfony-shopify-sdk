@@ -102,7 +102,10 @@ class ShopifyProductBulkSetRequest extends ShopifyBulkMutationRequest
      * Map one generic product descriptor to a Shopify ProductSetInput. Product-level keys:
      *  - id            ?string   Shopify product GID (present → update; absent/null → create)
      *  - title          string
-     *  - handle        ?string   set on CREATE only (null on update → existing handle preserved)
+     *  - handle             ?string   the product slug. On CREATE: applied when present. On UPDATE: applied only
+     *                                 when `redirectNewHandle` is also present (else Shopify keeps the live handle).
+     *  - redirectNewHandle  ?bool     UPDATE opt-in. Present → re-assert `handle` on the existing product; true has
+     *                                 Shopify 301-redirect the old storefront URL to the new one automatically.
      *  - vendor         string
      *  - productType    string
      *  - tags           string[] complete tag list (productSet REPLACES the list)
@@ -217,9 +220,17 @@ class ShopifyProductBulkSetRequest extends ShopifyBulkMutationRequest
             $input['id'] = (string)$product['id'];
         }
 
-        // handle only on CREATE — never churn an existing product's handle (would 301 its storefront URL)
-        if( empty($product['id']) && !empty($product['handle']) ) {
-            $input['handle'] = (string)$product['handle'];
+        // HANDLE. On CREATE: set the slug when provided. On UPDATE: Shopify keeps the existing handle by default
+        // (protects the storefront URL); a caller opts into re-asserting it by passing `redirectNewHandle` in the
+        // descriptor — we then set the handle AND let Shopify 301 the old URL to the new one (redirectNewHandle:true),
+        // so no redirect bookkeeping is needed here. Callers that omit the key keep the create-only-handle behaviour.
+        if( !empty($product['handle']) ) {
+            if( empty($product['id']) ) {
+                $input['handle'] = (string)$product['handle'];
+            } elseif( array_key_exists('redirectNewHandle', $product) ) {
+                $input['handle']            = (string)$product['handle'];
+                $input['redirectNewHandle'] = (bool)$product['redirectNewHandle'];
+            }
         }
 
         // omit status entirely when null so productSet leaves the current status untouched
