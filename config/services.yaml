@@ -203,3 +203,23 @@ services:
   shopifysdk.product_variants_bulk_create_request:
     alias: TurboLabIt\ShopifySdk\Request\ShopifyProductVariantsBulkCreateRequest
     public: true
+
+  TurboLabIt\ShopifySdk\Request\ShopifyMarketListRequest:
+    autowire: true
+    public: true
+    arguments:
+      $arrConfig: '%shopify_arrconfig%'
+
+  shopifysdk.market_list_request:
+    alias: TurboLabIt\ShopifySdk\Request\ShopifyMarketListRequest
+    public: true
+
+  TurboLabIt\ShopifySdk\Request\ShopifyMetafieldsSetRequest:
+    autowire: true
+    public: true
+    arguments:
+      $arrConfig: '%shopify_arrconfig%'
+
+  shopifysdk.metafields_set_request:
+    alias: TurboLabIt\ShopifySdk\Request\ShopifyMetafieldsSetRequest
+    public: true
