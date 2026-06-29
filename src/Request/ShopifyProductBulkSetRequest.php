@@ -238,6 +238,13 @@ class ShopifyProductBulkSetRequest extends ShopifyBulkMutationRequest
             $input['status'] = (string)$product['status'];
         }
 
+        // templateSuffix (native theme template) — a SCALAR ProductSetInput field, so keyed on PRESENCE: a caller
+        // that passes it re-asserts the template ('' clears the suffix → the theme's default template); callers
+        // that omit the key leave the current template untouched.
+        if( array_key_exists('templateSuffix', $product) ) {
+            $input['templateSuffix'] = (string)$product['templateSuffix'];
+        }
+
         return $input;
     }
 
