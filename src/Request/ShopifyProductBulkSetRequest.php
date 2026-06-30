@@ -33,11 +33,16 @@ class ShopifyProductBulkSetRequest extends ShopifyBulkMutationRequest
 
     const string SET_MUTATION =
         'mutation call($input: ProductSetInput!) { productSet(input: $input) ' .
-        '{ product { id status } userErrors { field message } } }';
+        '{ product { id status handle } userErrors { field message } } }';
 
     /** GIDs of the products upserted by the most recent setMany() call (created + updated), harvested from the
      *  bulk-mutation results — so the caller can, e.g., publish freshly created products to sales channels. */
     protected array $arrLastUpsertedGids = [];
+
+    /** Same upserted products as $arrLastUpsertedGids, but keyed by their (echoed) handle → GID, so a caller can
+     *  correlate a FRESHLY CREATED product (whose GID it can't predict) back to the descriptor it sent, via the
+     *  deterministic handle. */
+    protected array $arrLastUpsertedGidsByHandle = [];
 
 
     /**
@@ -46,7 +51,8 @@ class ShopifyProductBulkSetRequest extends ShopifyBulkMutationRequest
      */
     public function setMany(array $arrProducts) : array
     {
-        $this->arrLastUpsertedGids = [];
+        $this->arrLastUpsertedGids         = [];
+        $this->arrLastUpsertedGidsByHandle = [];
 
         if( empty($arrProducts) ) {
             return [];
@@ -58,8 +64,9 @@ class ShopifyProductBulkSetRequest extends ShopifyBulkMutationRequest
             array_values($arrProducts)
         );
 
-        $arrLines                  = $this->run(static::SET_MUTATION, $arrVariables);
-        $this->arrLastUpsertedGids = $this->collectProductGids($arrLines);
+        $arrLines                          = $this->run(static::SET_MUTATION, $arrVariables);
+        $this->arrLastUpsertedGids         = $this->collectProductGids($arrLines);
+        $this->arrLastUpsertedGidsByHandle = $this->collectProductGidsByHandle($arrLines);
 
         return $this->collectRowErrors($arrLines);
     }
@@ -69,6 +76,20 @@ class ShopifyProductBulkSetRequest extends ShopifyBulkMutationRequest
     public function getLastUpsertedGids() : array
     {
         return $this->arrLastUpsertedGids;
+    }
+
+
+    /**
+     * [handle => GID] of the products upserted by the last setMany() — the correlation a caller needs to map a
+     * just-created product back to the descriptor it sent (the flat getLastUpsertedGids() can't, as it drops
+     * errored rows and so loses positional alignment). A product whose handle Shopify auto-suffixed on a collision
+     * won't match the requested handle and is simply absent — the caller degrades gracefully on a miss.
+     *
+     * @return array<string,string>
+     */
+    public function getLastUpsertedGidsByHandle() : array
+    {
+        return $this->arrLastUpsertedGidsByHandle;
     }
 
 
@@ -95,6 +116,36 @@ class ShopifyProductBulkSetRequest extends ShopifyBulkMutationRequest
         }
 
         return $arrGids;
+    }
+
+
+    /**
+     * Harvest the upserted products as [handle => GID] from the bulk-mutation result JSONL (same version-dependent
+     * shape probing as collectProductGids). Only rows that produced a product AND echoed a non-empty handle are
+     * included.
+     *
+     * @return array<string,string>
+     */
+    protected function collectProductGidsByHandle(array $arrLines) : array
+    {
+        $arrByHandle = [];
+        foreach($arrLines as $oLine) {
+
+            $product =
+                $oLine->productSet->product
+                ?? $oLine->data->productSet->product
+                ?? $oLine->product
+                ?? null;
+
+            $gid    = (string)($product->id     ?? '');
+            $handle = (string)($product->handle ?? '');
+
+            if( $gid !== '' && $handle !== '' ) {
+                $arrByHandle[$handle] = $gid;
+            }
+        }
+
+        return $arrByHandle;
     }
 
 
