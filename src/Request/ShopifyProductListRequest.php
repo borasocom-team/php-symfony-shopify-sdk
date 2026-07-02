@@ -29,11 +29,22 @@ class ShopifyProductListRequest extends ShopifyBaseAdminRequest
     }
 
 
+    /**
+     * Extra Twig variables a subclass wants exposed to the products-bulk template (its `productField` block) — e.g.
+     * a list of publication ids to probe per product. Empty by default; merged into the render data below. Must not
+     * reuse the reserved `shopifyProductsQuery` / `shopify_config` keys.
+     */
+    protected function extraBulkTemplateData() : array
+    {
+        return [];
+    }
+
+
     protected function runProductBulkQuery(string $shopifyProductsQuery) : array
     {
         $response =
             $this
-                ->setQueryFromTemplate(['shopifyProductsQuery' => $shopifyProductsQuery], null, true)
+                ->setQueryFromTemplate(['shopifyProductsQuery' => $shopifyProductsQuery] + $this->extraBulkTemplateData(), null, true)
                 ->connector->send($this);
 
         // buildFromBulkResponse() throws on bulkOperationRunQuery userErrors, polls node(id:), downloads the JSONL

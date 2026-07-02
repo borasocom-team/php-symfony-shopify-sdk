@@ -214,6 +214,16 @@ services:
     alias: TurboLabIt\ShopifySdk\Request\ShopifyMarketListRequest
     public: true
 
+  TurboLabIt\ShopifySdk\Request\ShopifyCatalogListRequest:
+    autowire: true
+    public: true
+    arguments:
+      $arrConfig: '%shopify_arrconfig%'
+
+  shopifysdk.catalog_list_request:
+    alias: TurboLabIt\ShopifySdk\Request\ShopifyCatalogListRequest
+    public: true
+
   TurboLabIt\ShopifySdk\Request\ShopifyMetafieldsSetRequest:
     autowire: true
     public: true
