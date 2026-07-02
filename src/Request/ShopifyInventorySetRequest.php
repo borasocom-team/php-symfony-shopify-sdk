@@ -75,7 +75,7 @@ class ShopifyInventorySetRequest extends ShopifyBulkMutationRequest
                 ?? [];
 
             foreach($arrRowUserErrors as $oError) {
-                $arrErrors[] = ($oError->field ?? '') . ': ' . ($oError->message ?? '?');
+                $arrErrors[] = $this->formatUserError($oError);
             }
         }
 

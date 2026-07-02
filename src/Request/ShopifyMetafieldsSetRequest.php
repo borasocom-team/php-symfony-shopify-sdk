@@ -49,7 +49,7 @@ class ShopifyMetafieldsSetRequest extends ShopifyBaseAdminRequest
             $oResponse = $this->buildFromResponse($response);
 
             foreach($oResponse->data->metafieldsSet->userErrors ?? [] as $oError) {
-                $arrErrors[] = ($oError->field ?? '') . ': ' . ($oError->message ?? '?');
+                $arrErrors[] = $this->formatUserError($oError);
             }
         }
 

@@ -153,7 +153,7 @@ class ShopifyBulkMutationRequest extends ShopifyBaseAdminRequest
     protected function stringifyUserErrors(array $arrUserErrors) : string
     {
         return implode('; ', array_map(
-            fn($oneError) => ($oneError->field ?? '') . ': ' . ($oneError->message ?? '?'),
+            fn($oneError) => $this->formatUserError($oneError),
             $arrUserErrors
         ));
     }

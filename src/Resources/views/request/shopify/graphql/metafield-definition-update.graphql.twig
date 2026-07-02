@@ -4,8 +4,13 @@ mutation {
     namespace:  "{{ namespace }}",
     key:        "{{ key }}",
     ownerType:  {{ ownerType }},
-    name:       "{{ name }}",
-    pin:        {{ (pin is defined and pin) ? 'true' : 'false' }}
+    name:       "{{ name }}"
+    {#- pin is emitted ONLY when the caller passes it: metafieldDefinitionUpdate leaves the pin/unpin state
+        UNCHANGED when the field is absent, so an omitted `pin` preserves whatever the operator set (an explicit
+        `pin: false` here would UNPIN on every reconcile). See ImportProducts buildMetafieldDefinitions(). -#}
+    {%- if pin is defined %},
+    pin:        {{ pin ? 'true' : 'false' }}
+    {%- endif %}
     {%- if validations is defined and validations|length > 0 %},
     validations: [
       {%- for v in validations %}

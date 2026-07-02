@@ -22,7 +22,7 @@ class ShopifySmartCollectionUpdateRequest extends ShopifyBaseAdminRequest
         if( !empty($arrUserErrors) ) {
 
             $arrMessages = array_map(
-                fn($oneError) => ($oneError->field ?? '') . ': ' . ($oneError->message ?? '?'),
+                fn($oneError) => $this->formatUserError($oneError),
                 $arrUserErrors
             );
             throw new ShopifyResponseException('collectionUpdate userErrors: ' . implode('; ', $arrMessages));

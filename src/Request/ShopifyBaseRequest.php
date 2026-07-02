@@ -42,6 +42,24 @@ abstract class ShopifyBaseRequest extends Request implements HasBodyContract
     }
 
 
+    /**
+     * Format one GraphQL userError as "field: message". Shopify types `userErrors.field` as `[String!]` — a PATH
+     * into the input (e.g. ["variants","1","inventoryItem","barcode"]), NOT a scalar — so it MUST be joined, never
+     * string-concatenated: `(array) . ': '` raises a "Array to string conversion" warning, which Symfony's
+     * ErrorHandler escalates to a fatal that MASKS the very message being reported (and aborts a whole bulk-row
+     * batch over one bad row). Tolerates `field` arriving as the documented array, a bare scalar, or null/absent.
+     */
+    protected function formatUserError(object $oError) : string
+    {
+        $field = $oError->field ?? '';
+        if( is_array($field) ) {
+            $field = implode('.', $field);
+        }
+
+        return (string)$field . ': ' . ($oError->message ?? '?');
+    }
+
+
     public function setQueryFromTemplate(array $arrData = [], ?string $overrideTemplateName = null, bool $queryIsJson = false) : static
     {
         if( empty($this->templateFile) ) {
