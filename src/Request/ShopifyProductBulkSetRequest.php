@@ -161,6 +161,9 @@ class ShopifyProductBulkSetRequest extends ShopifyBulkMutationRequest
      *  - productType    string
      *  - tags           string[] complete tag list (productSet REPLACES the list)
      *  - status        ?string   ACTIVE/DRAFT to set; null → leave unchanged
+     *  - descriptionHtml ?string  native product body (HTML). A SCALAR ProductSetInput field, keyed on PRESENCE:
+     *                            pass it to assert the body ('' clears it); omit the key to leave the current
+     *                            body untouched (same convention as templateSuffix).
      *  - metafields     array[]  PRODUCT-level Shopify MetafieldInput rows (namespace/key/type/value)
      *  - files         ?array[]  product MEDIA as raw Shopify FileSetInput rows ({originalSource: <public url>}
      *                            or {id: <file gid>}, optional alt/contentType/...), in GALLERY ORDER. `files`
@@ -287,6 +290,12 @@ class ShopifyProductBulkSetRequest extends ShopifyBulkMutationRequest
         // omit status entirely when null so productSet leaves the current status untouched
         if( !empty($product['status']) ) {
             $input['status'] = (string)$product['status'];
+        }
+
+        // descriptionHtml (native product body) — SCALAR, keyed on PRESENCE like templateSuffix: a caller that
+        // passes it asserts the body ('' clears it); callers that omit the key leave the current body untouched.
+        if( array_key_exists('descriptionHtml', $product) ) {
+            $input['descriptionHtml'] = (string)$product['descriptionHtml'];
         }
 
         // templateSuffix (native theme template) — a SCALAR ProductSetInput field, so keyed on PRESENCE: a caller
