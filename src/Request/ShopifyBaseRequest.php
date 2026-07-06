@@ -28,6 +28,8 @@ abstract class ShopifyBaseRequest extends Request implements HasBodyContract
 
     protected array $arrCachedData = [];
 
+    protected ?\Closure $consoleSink = null;
+
 
     use HasBody;
 
@@ -40,6 +42,31 @@ abstract class ShopifyBaseRequest extends Request implements HasBodyContract
 
         return $methodName . '.' . hash('xxh3', serialize($input));
     }
+
+
+    /**
+     * Console sink for operational progress: fn(string $level, string $message), levels 'info'|'warning'.
+     * Today only the async bulk-operation poll emits through it (see buildFromBulkResponse). No sink (the
+     * default) = fully silent, the pre-existing behavior. Pass null to clear — callers should do so in a
+     * finally, to break the caller ↔ request ↔ closure reference cycle.
+     */
+    public function setConsoleSink(?callable $sink) : static
+    {
+        $this->consoleSink = $sink !== null ? \Closure::fromCallable($sink) : null;
+        return $this;
+    }
+
+
+    protected function emitToConsoleSink(string $message, string $level = 'info') : void
+    {
+        if( $this->consoleSink !== null ) {
+            ($this->consoleSink)($level, $message);
+        }
+    }
+
+
+    protected function formatElapsedMinSec(int $seconds) : string
+        { return sprintf('%d:%02d min', intdiv($seconds, 60), $seconds % 60); }
 
 
     /**
@@ -118,6 +145,9 @@ abstract class ShopifyBaseRequest extends Request implements HasBodyContract
             ?? null;
 
         // While the operation is running, you need to poll to see its progress
+        $pollStartedAt  = time();
+        $pollCount      = 0;
+
         do {
             $response =
                 $this
@@ -131,12 +161,29 @@ abstract class ShopifyBaseRequest extends Request implements HasBodyContract
             $oCurrentOp     = $oResponse->data->node ?? null;
             $bulkOpStatus   = $oCurrentOp->status ?? null;
             $bulkOpIsDone   = strtoupper((string)$bulkOpStatus) == static::BULK_OP_STATUS_DONE;
+            $pollCount++;
 
             if( !$bulkOpIsDone ) {
+
+                // heartbeat, so a long-running operation is distinguishable from a hang in the (cron) log:
+                // on the first poll, then ~every 30 s (the poll interval is 2 s). Silent unless a sink is wired.
+                if( $pollCount == 1 || $pollCount % 15 == 0 ) {
+                    $this->emitToConsoleSink(sprintf(
+                        'bulk operation %s — ##%s## object(s) processed so far, elapsed %s',
+                        (string)$bulkOpStatus, (string)($oCurrentOp->objectCount ?? '?'),
+                        $this->formatElapsedMinSec(time() - $pollStartedAt)
+                    ));
+                }
+
                 sleep(2);
             }
 
         } while(!$bulkOpIsDone);
+
+        $this->emitToConsoleSink(sprintf(
+            'bulk operation completed — ##%s## object(s) in %s',
+            (string)($oCurrentOp->objectCount ?? '?'), $this->formatElapsedMinSec(time() - $pollStartedAt)
+        ));
 
         // When an operation is completed, a JSONL output file is available for download at the URL specified in the url field
         $dataUrl = $oCurrentOp->url ?? null;
