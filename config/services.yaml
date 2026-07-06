@@ -243,3 +243,13 @@ services:
   shopifysdk.metafields_set_request:
     alias: TurboLabIt\ShopifySdk\Request\ShopifyMetafieldsSetRequest
     public: true
+
+  TurboLabIt\ShopifySdk\Request\ShopifyMetafieldsSetBulkRequest:
+    autowire: true
+    public: true
+    arguments:
+      $arrConfig: '%shopify_arrconfig%'
+
+  shopifysdk.metafields_set_bulk_request:
+    alias: TurboLabIt\ShopifySdk\Request\ShopifyMetafieldsSetBulkRequest
+    public: true
