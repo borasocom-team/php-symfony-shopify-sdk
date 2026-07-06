@@ -114,6 +114,16 @@ services:
     alias: TurboLabIt\ShopifySdk\Request\ShopifyPublishableRequest
     public: true
 
+  TurboLabIt\ShopifySdk\Request\ShopifyPublishableBulkRequest:
+    autowire: true
+    public: true
+    arguments:
+      $arrConfig: '%shopify_arrconfig%'
+
+  shopifysdk.publishable_bulk_request:
+    alias: TurboLabIt\ShopifySdk\Request\ShopifyPublishableBulkRequest
+    public: true
+
   TurboLabIt\ShopifySdk\Request\ShopifyMetaobjectRequest:
     autowire: true
     public: true
