@@ -263,3 +263,13 @@ services:
   shopifysdk.metafields_delete_request:
     alias: TurboLabIt\ShopifySdk\Request\ShopifyMetafieldsDeleteRequest
     public: true
+
+  TurboLabIt\ShopifySdk\Request\ShopifyFileListRequest:
+    autowire: true
+    public: true
+    arguments:
+      $arrConfig: '%shopify_arrconfig%'
+
+  shopifysdk.file_list_request:
+    alias: TurboLabIt\ShopifySdk\Request\ShopifyFileListRequest
+    public: true
