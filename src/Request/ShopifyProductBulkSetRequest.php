@@ -180,7 +180,12 @@ class ShopifyProductBulkSetRequest extends ShopifyBulkMutationRequest
      *                            barcode(?string), metafields(array[]), optionValue(string — the option value,
      *                            ignored when optionName is null), file(?array — one FileSetInput row binding
      *                            the variant's image; use the SAME originalSource as the product `files` row
-     *                            so Shopify associates that media instead of ingesting twice)
+     *                            so Shopify associates that media instead of ingesting twice),
+     *                            id(?string — the LIVE variant GID: when present, productSet updates THAT variant
+     *                            in place — option value included — instead of matching rows by option values.
+     *                            Without it, an option-value change is a delete+create, which breaks on variant
+     *                            metafields with a uniqueValues constraint: the new variant's value collides with
+     *                            the outgoing variant's before the latter is dropped. Omit on CREATE rows.)
      * When `variants` is absent the LEGACY single-variant shape is used instead: top-level sku/price/barcode/
      * available/allowBackorder + variantMetafields (+ file) → one default `Title`/`Default Title` variant.
      */
@@ -234,6 +239,11 @@ class ShopifyProductBulkSetRequest extends ShopifyBulkMutationRequest
                     ],
                 ],
             ];
+
+            // live variant GID → identity-assert the match (see docblock); absent on CREATE rows
+            if( !empty($varDesc['id']) ) {
+                $variant['id'] = (string)$varDesc['id'];
+            }
 
             if( !empty($varDesc['barcode']) ) {
                 $variant['barcode'] = (string)$varDesc['barcode'];
