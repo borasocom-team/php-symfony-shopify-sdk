@@ -157,4 +157,23 @@ class ShopifyBulkMutationRequest extends ShopifyBaseAdminRequest
             $arrUserErrors
         ));
     }
+
+
+    /**
+     * Per-line GraphQL errors inside a bulk-op result: a row can fail at the GRAPHQL level (top-level `errors`
+     * array on its result line, `data` null, NO userErrors) — e.g. an input-shape rejection after an API-version
+     * bump. Every collectRowErrors() must merge these in: reading only userErrors makes such a row report
+     * SUCCESS while writing nothing (a silent no-op, seen live on inventorySetQuantities under API 2026-04).
+     *
+     * @return string[] one message per GraphQL error on the line (empty when the line has none)
+     */
+    protected function lineGraphqlErrors(\stdClass $oLine) : array
+    {
+        $arrErrors = [];
+        foreach($oLine->errors ?? [] as $oError) {
+            $arrErrors[] = (string)($oError->message ?? json_encode($oError));
+        }
+
+        return $arrErrors;
+    }
 }

@@ -81,6 +81,8 @@ class ShopifyPublishableBulkRequest extends ShopifyBulkMutationRequest
             foreach($arrRowUserErrors as $oError) {
                 $arrErrors[] = $this->formatUserError($oError);
             }
+
+            $arrErrors = array_merge($arrErrors, $this->lineGraphqlErrors($oLine));
         }
 
         return $arrErrors;

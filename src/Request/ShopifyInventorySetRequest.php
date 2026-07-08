@@ -95,12 +95,7 @@ class ShopifyInventorySetRequest extends ShopifyBulkMutationRequest
                 $arrErrors[] = $this->formatUserError($oError);
             }
 
-            // a row can also fail at the GraphQL level INSIDE the bulk op (top-level `errors` on the result
-            // line, data null, NO userErrors) — e.g. an input-shape rejection. Silent before this: the write
-            // no-opped while the run reported success.
-            foreach($oLine->errors ?? [] as $oError) {
-                $arrErrors[] = (string)($oError->message ?? json_encode($oError));
-            }
+            $arrErrors = array_merge($arrErrors, $this->lineGraphqlErrors($oLine));
         }
 
         return $arrErrors;
