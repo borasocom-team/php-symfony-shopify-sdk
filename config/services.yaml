@@ -264,6 +264,46 @@ services:
     alias: TurboLabIt\ShopifySdk\Request\ShopifyMetafieldsDeleteRequest
     public: true
 
+  TurboLabIt\ShopifySdk\Request\ShopifyMetafieldSnapshotRequest:
+    autowire: true
+    public: true
+    arguments:
+      $arrConfig: '%shopify_arrconfig%'
+
+  shopifysdk.metafield_snapshot_request:
+    alias: TurboLabIt\ShopifySdk\Request\ShopifyMetafieldSnapshotRequest
+    public: true
+
+  TurboLabIt\ShopifySdk\Request\ShopifyTranslationsRegisterRequest:
+    autowire: true
+    public: true
+    arguments:
+      $arrConfig: '%shopify_arrconfig%'
+
+  shopifysdk.translations_register_request:
+    alias: TurboLabIt\ShopifySdk\Request\ShopifyTranslationsRegisterRequest
+    public: true
+
+  TurboLabIt\ShopifySdk\Request\ShopifyTranslatableContentRequest:
+    autowire: true
+    public: true
+    arguments:
+      $arrConfig: '%shopify_arrconfig%'
+
+  shopifysdk.translatable_content_request:
+    alias: TurboLabIt\ShopifySdk\Request\ShopifyTranslatableContentRequest
+    public: true
+
+  TurboLabIt\ShopifySdk\Request\ShopifyShopLocaleListRequest:
+    autowire: true
+    public: true
+    arguments:
+      $arrConfig: '%shopify_arrconfig%'
+
+  shopifysdk.shop_locale_list_request:
+    alias: TurboLabIt\ShopifySdk\Request\ShopifyShopLocaleListRequest
+    public: true
+
   TurboLabIt\ShopifySdk\Request\ShopifyFileListRequest:
     autowire: true
     public: true
