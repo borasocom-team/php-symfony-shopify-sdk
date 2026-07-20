@@ -1,9 +1,13 @@
 {# https://shopify.dev/docs/api/admin-graphql/latest/mutations/metaobjectDefinitionUpdate #}
 {# Reconciles an existing metaobject definition: `creates` = field defs to add, `updates` = existing fields whose #}
-{# label (name) drifted and must be renamed. key/type are immutable, so `update` ops carry only key + name. #}
+{# label (name) drifted and must be renamed. key/type are immutable, so `update` ops carry only key + name.       #}
+{# `enableTranslatable` switches the definition-level translatable capability ON (never off — see the caller).    #}
+{# Each block is emitted only when it has something to say, so a capability-only flip sends no fieldDefinitions.  #}
 {# Strings go through |json_encode|raw so special chars (&, ", …) are escaped for GraphQL, never HTML-entitied. #}
+{% set hasFields = creates|length > 0 or updates|length > 0 -%}
 mutation {
   metaobjectDefinitionUpdate(id: {{ id|json_encode|raw }}, definition: {
+    {%- if hasFields %}
     fieldDefinitions: [
       {%- for f in creates %}
       {% if not loop.first %},{% endif %}{ create: { key: {{ f.key|json_encode|raw }}, name: {{ f.name|json_encode|raw }}, type: {{ f.type|json_encode|raw }} } }
@@ -11,7 +15,11 @@ mutation {
       {%- for f in updates %}
       {% if creates|length > 0 or not loop.first %},{% endif %}{ update: { key: {{ f.key|json_encode|raw }}, name: {{ f.name|json_encode|raw }} } }
       {%- endfor %}
-    ]
+    ]{% if enableTranslatable %},{% endif %}
+    {%- endif %}
+    {%- if enableTranslatable %}
+    capabilities: { translatable: { enabled: true } }
+    {%- endif %}
   }) {
     metaobjectDefinition { id type }
     userErrors { field message code }

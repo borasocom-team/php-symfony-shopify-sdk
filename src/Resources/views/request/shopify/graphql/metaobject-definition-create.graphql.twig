@@ -6,6 +6,10 @@ mutation {
     type:           {{ type|json_encode|raw }},
     displayNameKey: {{ displayNameKey|json_encode|raw }},
     access: { storefront: PUBLIC_READ },
+    {%- if translatable %}
+    {# entries' text fields become translatable content (Translations API / Translate & Adapt) #}
+    capabilities: { translatable: { enabled: true } },
+    {%- endif %}
     fieldDefinitions: [
       {%- for f in fieldDefinitions %}
       { key: {{ f.key|json_encode|raw }}, name: {{ f.name|json_encode|raw }}, type: {{ f.type|json_encode|raw }} }{% if not loop.last %},{% endif %}

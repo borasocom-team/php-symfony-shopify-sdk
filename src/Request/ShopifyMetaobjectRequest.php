@@ -8,7 +8,8 @@ class ShopifyMetaobjectRequest extends ShopifyBaseAdminRequest
 {
     protected string $templateFile = 'metaobjects-by-type';
 
-    /** @var array<string, array{id:string, displayNameFieldKey:?string, fields:?array<string,string>}> $fields = [key => name] */
+    /** @var array<string, array{id:string, displayNameFieldKey:?string, fields:?array<string,string>, translatable:?bool}>
+     *       $fields = [key => name]; `fields`/`translatable` are null when un-introspectable (instance fallback) */
     private array $arrTypeDefinitions = [];
 
     /** Field keys reconciled (added OR renamed) the last time ensureDefinition() touched an existing definition. */
@@ -22,19 +23,27 @@ class ShopifyMetaobjectRequest extends ShopifyBaseAdminRequest
      * (key/type are immutable). Returns the definition GID. $displayNameKey must be one of the field keys (used as
      * the entry's display name, which findOrCreateByDisplayName() looks up by).
      *
+     * $translatable asserts the definition-level TRANSLATABLE capability — the switch that makes every entry's
+     * text fields translatable content (Translations API / the merchant's Translate & Adapt), keyed by the field
+     * key; there is no per-field flag. It is asserted ONE WAY, like every capability reconcile here: `true`
+     * switches it on when the store has it off, `false` (the default) leaves whatever the store has alone —
+     * turning it off would drop existing translations, which no reconcile should ever do implicitly.
+     *
      * @param array<int,array{key:string,name:string,type:string}> $fieldDefinitions
      */
-    public function ensureDefinition(string $type, string $name, array $fieldDefinitions, string $displayNameKey = 'label') : string
+    public function ensureDefinition(
+        string $type, string $name, array $fieldDefinitions, string $displayNameKey = 'label', bool $translatable = false
+    ) : string
     {
         $this->arrLastReconciledFieldKeys = [];
 
         try {
             $def = $this->getDefinition($type);
         } catch (ShopifyResponseException) {
-            return $this->createDefinition($type, $name, $fieldDefinitions, $displayNameKey);
+            return $this->createDefinition($type, $name, $fieldDefinitions, $displayNameKey, $translatable);
         }
 
-        $this->reconcileDefinitionFields($type, $def, $fieldDefinitions);
+        $this->reconcileDefinition($type, $def, $fieldDefinitions, $translatable);
 
         return $def['id'];
     }
@@ -58,37 +67,45 @@ class ShopifyMetaobjectRequest extends ShopifyBaseAdminRequest
      * only key + name. No-op when nothing drifted, or when the field set couldn't be introspected (instance-based
      * fallback). Never deletes: a field on the store but absent from $fieldDefinitions is left untouched.
      *
-     * @param array{id:string, displayNameFieldKey:?string, fields:?array<string,string>} $def
+     * $translatable=true additionally switches the definition's translatable capability on when the store has it
+     * off (never off — see ensureDefinition). Both halves ride ONE metaobjectDefinitionUpdate; a capability-only
+     * flip is reconciled even when the field set is un-introspectable.
+     *
+     * @param array{id:string, displayNameFieldKey:?string, fields:?array<string,string>, translatable:?bool} $def
      * @param array<int,array{key:string,name:string,type:string}> $fieldDefinitions
      */
-    private function reconcileDefinitionFields(string $type, array $def, array $fieldDefinitions) : void
+    private function reconcileDefinition(string $type, array $def, array $fieldDefinitions, bool $translatable = false) : void
     {
-        $arrExistingFields = $def['fields'] ?? null;
-        if($arrExistingFields === null) {
-            // couldn't introspect existing fields (definition resolved via instance fallback) — skip reconcile
-            return;
-        }
+        // capability drift is independent of the field set: assert it even on the instance-based fallback (whose
+        // `translatable` is null = unknown → nothing to compare against, so leave it alone)
+        $enableTranslatable = $translatable && ($def['translatable'] ?? null) === false;
 
         $arrCreates = [];   // key not on the store yet → add it
         $arrUpdates = [];   // key present but its label (name) changed → rename it
-        foreach($fieldDefinitions as $fd) {
-            if( !array_key_exists($fd['key'], $arrExistingFields) ) {
-                $arrCreates[] = $fd;
-            } elseif( $arrExistingFields[$fd['key']] !== $fd['name'] ) {
-                $arrUpdates[] = $fd;
+
+        $arrExistingFields = $def['fields'] ?? null;
+        if($arrExistingFields !== null) {
+            foreach($fieldDefinitions as $fd) {
+                if( !array_key_exists($fd['key'], $arrExistingFields) ) {
+                    $arrCreates[] = $fd;
+                } elseif( $arrExistingFields[$fd['key']] !== $fd['name'] ) {
+                    $arrUpdates[] = $fd;
+                }
             }
         }
+        // ($arrExistingFields === null → couldn't introspect the fields: instance-based fallback → no field reconcile)
 
-        if( empty($arrCreates) && empty($arrUpdates) ) {
+        if( empty($arrCreates) && empty($arrUpdates) && !$enableTranslatable ) {
             return;
         }
 
         $response =
             $this
                 ->setQueryFromTemplate([
-                    'id'      => $def['id'],
-                    'creates' => $arrCreates,
-                    'updates' => $arrUpdates,
+                    'id'                 => $def['id'],
+                    'creates'            => $arrCreates,
+                    'updates'            => $arrUpdates,
+                    'enableTranslatable' => $enableTranslatable,
                 ], 'metaobject-definition-update', true)
                 ->connector->send($this);
 
@@ -123,10 +140,13 @@ class ShopifyMetaobjectRequest extends ShopifyBaseAdminRequest
 
     /**
      * Create a metaobject definition. Prefer ensureDefinition() unless you know it doesn't exist.
+     * $translatable enables the definition-level translatable capability (see ensureDefinition).
      *
      * @param array<int,array{key:string,name:string,type:string}> $fieldDefinitions
      */
-    public function createDefinition(string $type, string $name, array $fieldDefinitions, string $displayNameKey = 'label') : string
+    public function createDefinition(
+        string $type, string $name, array $fieldDefinitions, string $displayNameKey = 'label', bool $translatable = false
+    ) : string
     {
         $response =
             $this
@@ -135,6 +155,7 @@ class ShopifyMetaobjectRequest extends ShopifyBaseAdminRequest
                     'name'           => $name,
                     'displayNameKey' => $displayNameKey,
                     'fieldDefinitions' => $fieldDefinitions,
+                    'translatable'   => $translatable,
                 ], 'metaobject-definition-create', true)
                 ->connector->send($this);
 
@@ -152,6 +173,7 @@ class ShopifyMetaobjectRequest extends ShopifyBaseAdminRequest
             'id'                  => $id,
             'displayNameFieldKey' => $displayNameKey,
             'fields'              => array_column($fieldDefinitions, 'name', 'key'),
+            'translatable'        => $translatable,
         ];
 
         return $id;
@@ -185,6 +207,7 @@ class ShopifyMetaobjectRequest extends ShopifyBaseAdminRequest
                 'id'                  => $def->id,
                 'displayNameFieldKey' => $def->displayNameKey ?? null,
                 'fields'              => $arrFields,
+                'translatable'        => (bool)($def->capabilities->translatable->enabled ?? false),
             ];
         }
 
@@ -207,11 +230,13 @@ class ShopifyMetaobjectRequest extends ShopifyBaseAdminRequest
             );
         }
 
-        // instance-based fallback can't introspect the definition's field list → fields null (reconcile skipped)
+        // instance-based fallback can't introspect the definition's field list nor its capabilities → both null
+        // (unknown), so the reconcile leaves fields AND the translatable capability alone
         return $this->arrTypeDefinitions[$type] = [
             'id'                  => $defEdge->id,
             'displayNameFieldKey' => $defEdge->displayNameKey ?? null,
             'fields'              => null,
+            'translatable'        => null,
         ];
     }
 

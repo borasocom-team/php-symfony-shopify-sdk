@@ -5,6 +5,9 @@ query {
     type
     name
     displayNameKey
+    {# translatable = the DEFINITION-level capability that turns the entries' text fields into translatable
+       content (there is no per-field flag): read it so ensureDefinition() can switch it on when asked. #}
+    capabilities { translatable { enabled } }
     fieldDefinitions {
       key
       name
