@@ -9,7 +9,7 @@ mutation {
       appliedDisjunctively: {{ ruleSet.appliedDisjunctively|default(false) ? 'true' : 'false' }},
       rules: [
         {%- for r in ruleSet.rules %}
-        { column: {{ r.column }}, relation: {{ r.relation }}, condition: {{ r.condition|json_encode|raw }} }{% if not loop.last %},{% endif %}
+        { column: {{ r.column }}, relation: {{ r.relation }}, condition: {{ r.condition|json_encode|raw }}{% if r.conditionObjectId is defined and r.conditionObjectId %}, conditionObjectId: {{ r.conditionObjectId|json_encode|raw }}{% endif %} }{% if not loop.last %},{% endif %}
         {%- endfor %}
       ]
     }
