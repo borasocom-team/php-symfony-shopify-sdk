@@ -3,6 +3,13 @@ mutation {
   collectionUpdate(input: {
     id:     {{ id|json_encode|raw }},
     title:  {{ title|json_encode|raw }}
+    {#- templateSuffix (native theme template): a SCALAR CollectionInput field, so keyed on PRESENCE — a caller that
+        passes it re-asserts the template ('' clears the suffix → the theme's default template); callers that omit
+        the key leave the current template untouched. Same convention as productSet. #}
+    {%- if templateSuffix is defined and templateSuffix is not null -%}
+    ,
+    templateSuffix: {{ templateSuffix|json_encode|raw }}
+    {%- endif -%}
     {%- if ruleSet is defined and ruleSet -%}
     ,
     ruleSet: {
@@ -19,6 +26,7 @@ mutation {
       id
       title
       handle
+      templateSuffix
       ruleSet {
         appliedDisjunctively
         rules { column relation condition }

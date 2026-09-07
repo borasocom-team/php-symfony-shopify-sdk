@@ -3,6 +3,13 @@ mutation {
   collectionCreate(input: {
     title:  {{ title|json_encode|raw }},
     handle: {{ handle|json_encode|raw }}
+    {#- templateSuffix (native theme template): a SCALAR CollectionInput field, so keyed on PRESENCE — a caller that
+        passes it asserts the template ('' = the theme's default template, which also clears a hand-set suffix);
+        callers that omit the key let Shopify apply the theme default. Same convention as productSet. #}
+    {%- if templateSuffix is defined and templateSuffix is not null -%}
+    ,
+    templateSuffix: {{ templateSuffix|json_encode|raw }}
+    {%- endif -%}
     {%- if ruleSet is defined and ruleSet -%}
     ,
     ruleSet: {
@@ -27,6 +34,7 @@ mutation {
       id
       title
       handle
+      templateSuffix
       ruleSet {
         appliedDisjunctively
         rules { column relation condition }

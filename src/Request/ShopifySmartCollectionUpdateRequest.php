@@ -9,6 +9,12 @@ class ShopifySmartCollectionUpdateRequest extends ShopifyBaseAdminRequest
     protected string $templateFile = 'smart-collection-update';
 
 
+    /**
+     * collectionUpdate. $arrInput keys: id, title, ruleSet? (same shape as create), templateSuffix? — the native
+     * theme template, a SCALAR keyed on PRESENCE: pass it to re-assert the template ('' clears the suffix → theme
+     * default), omit the key to leave the current template untouched. Returns the updated collection node (id,
+     * title, handle, templateSuffix, ruleSet); throws ShopifyResponseException on userErrors.
+     */
     public function update(array $arrInput) : \stdClass
     {
         $response =
