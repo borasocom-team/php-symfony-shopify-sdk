@@ -6,7 +6,10 @@ namespace TurboLabIt\ShopifySdk\Request;
  * Bulk-reads products from Shopify. Each returned node carries id, status, tags[] (plus whatever extra fields
  * a subclass injects via the `productField` Twig block of the products-bulk template), indexed by Shopify GID.
  * If the subclass block queries the `variants` connection, each variant arrives as a child JSONL line and is
- * re-attached to its product as `->variants[]` (plain array of variant nodes).
+ * re-attached to its product as `->variants[]` (plain array of variant nodes); same for the `media` connection
+ * (MediaImage/Video/ExternalVideo/Model3d child lines → `->media[]` — e.g. to read each media's `status`, since
+ * `mediaCount` counts FAILED media too). Children of any other type are ignored. A product with an EMPTY nested
+ * connection emits no child lines, so the array property stays unset — consumers must treat "unset" as empty.
  */
 class ShopifyProductListRequest extends ShopifyBaseAdminRequest
 {
@@ -59,10 +62,16 @@ class ShopifyProductListRequest extends ShopifyBaseAdminRequest
             $parentId = (string)($node->__parentId ?? '');
 
             if( $parentId !== '' ) {
-                // child of a nested connection → re-attach ProductVariant rows under their product
-                if( isset($arrProducts[$parentId]) && stripos((string)($node->id ?? ''), '/ProductVariant/') !== false ) {
-                    $arrProducts[$parentId]->variants   ??= [];
-                    $arrProducts[$parentId]->variants[] = $node;
+                // child of a nested connection → re-attach rows under their product, bucketed by gid type
+                $childId = (string)($node->id ?? '');
+                if( isset($arrProducts[$parentId]) ) {
+                    if( stripos($childId, '/ProductVariant/') !== false ) {
+                        $arrProducts[$parentId]->variants   ??= [];
+                        $arrProducts[$parentId]->variants[] = $node;
+                    } elseif( preg_match('~/(MediaImage|Video|ExternalVideo|Model3d)/~i', $childId) === 1 ) {
+                        $arrProducts[$parentId]->media   ??= [];
+                        $arrProducts[$parentId]->media[] = $node;
+                    }
                 }
                 continue;
             }
