@@ -313,3 +313,13 @@ services:
   shopifysdk.file_list_request:
     alias: TurboLabIt\ShopifySdk\Request\ShopifyFileListRequest
     public: true
+
+  TurboLabIt\ShopifySdk\Request\ShopifyUrlRedirectRequest:
+    autowire: true
+    public: true
+    arguments:
+      $arrConfig: '%shopify_arrconfig%'
+
+  shopifysdk.url_redirect_request:
+    alias: TurboLabIt\ShopifySdk\Request\ShopifyUrlRedirectRequest
+    public: true
