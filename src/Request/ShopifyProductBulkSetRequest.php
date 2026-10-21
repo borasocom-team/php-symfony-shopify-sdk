@@ -164,6 +164,9 @@ class ShopifyProductBulkSetRequest extends ShopifyBulkMutationRequest
      *  - descriptionHtml ?string  native product body (HTML). A SCALAR ProductSetInput field, keyed on PRESENCE:
      *                            pass it to assert the body ('' clears it); omit the key to leave the current
      *                            body untouched (same convention as templateSuffix).
+     *  - seo           ?array    native search-engine listing ({title: ?string, description: ?string} → SEOInput).
+     *                            Keyed on PRESENCE like descriptionHtml: pass it to assert BOTH fields ('' clears
+     *                            one); omit the key to leave the current listing untouched.
      *  - metafields     array[]  PRODUCT-level Shopify MetafieldInput rows (namespace/key/type/value)
      *  - files         ?array[]  product MEDIA as raw Shopify FileSetInput rows ({originalSource: <public url>}
      *                            or {id: <file gid>}, optional alt/contentType/...), in GALLERY ORDER. `files`
@@ -313,6 +316,16 @@ class ShopifyProductBulkSetRequest extends ShopifyBulkMutationRequest
         // that omit the key leave the current template untouched.
         if( array_key_exists('templateSuffix', $product) ) {
             $input['templateSuffix'] = (string)$product['templateSuffix'];
+        }
+
+        // seo (native search-engine listing: page title + meta description) — SEOInput, keyed on PRESENCE like
+        // the scalars above: a caller that passes it asserts both fields; callers that omit the key leave the
+        // current listing untouched.
+        if( array_key_exists('seo', $product) ) {
+            $input['seo'] = [
+                'title'       => (string)($product['seo']['title']       ?? ''),
+                'description' => (string)($product['seo']['description'] ?? ''),
+            ];
         }
 
         return $input;
